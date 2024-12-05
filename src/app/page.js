@@ -168,57 +168,58 @@ export default function Home() {
     return maskFile;
   }
 
-  async function handleGenerativeFill() {
-    if (!imageUrl || !editPrompt) {
-      setError('Both image and prompt are required');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const maskFile = await handleCanvasToMask();
-      console.log("Sending mask file:", maskFile);
-      console.log("Mask file type:", maskFile.type);
-      console.log("Mask file size:", maskFile.size);
-
-      const formData = new FormData();
-      formData.append('imageUrl', imageUrl);
-      formData.append('mask', maskFile);
-      formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
-
-      const res = await fetch('/api/edit', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-      console.log('Edit API Response:', data);
-      
-      if (!res.ok) throw new Error(data.error || 'Processing error');
-      
-      if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error('Invalid API response: unexpected format');
-      }
-      
-      setImageUrl(data.data[0].url);
-      setIsEditMode(false);
-      setEditPrompt('');
-      
-      setTimeout(() => {
-        window.scrollTo({ 
-          top: document.documentElement.scrollHeight,
-          behavior: 'smooth'
-        });
-      }, 100);
-    } catch (err) {
-      console.error('Error details:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+ async function handleGenerativeFill() {
+  if (!imageUrl || !editPrompt) {
+    setError('Both image and prompt are required');
+    return;
   }
+
+  setLoading(true);
+  setError(null);
+
+  try {
+    const maskFile = await handleCanvasToMask();
+    const formData = new FormData();
+    formData.append('imageUrl', imageUrl);
+    formData.append('mask', maskFile);
+    formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
+
+    const res = await fetch('/api/edit', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    console.log('Edit API Response:', data);
+    
+    if (!res.ok) {
+      const errorMessage = data.errors ? data.errors[0] : data.error || 'Processing error';
+      throw new Error(errorMessage);
+    }
+    
+    // Modifichiamo la verifica della risposta
+    if (data && data.url) {
+      setImageUrl(data.url);
+    } else if (data && data.data && data.data[0] && data.data[0].url) {
+      setImageUrl(data.data[0].url);
+    } else {
+      throw new Error('Invalid API response format');
+    }
+
+    setIsEditMode(false);
+    setEditPrompt('');
+
+    setTimeout(() => {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    }, 100);
+
+  } catch (err) {
+    console.error('Error details:', err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
