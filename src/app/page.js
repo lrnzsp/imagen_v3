@@ -145,36 +145,35 @@ export default function Home() {
     }
   }
 
-  async function handleCanvasToMask() {
-    const canvas = document.getElementById('maskCanvas');
-    // Creiamo un nuovo canvas temporaneo con le dimensioni corrette
-    const tempCanvas = document.createElement('canvas');
-    
-    // Get the original image dimensions
-    const img = new Image();
-    await new Promise((resolve) => {
-      img.onload = resolve;
-      img.src = imageUrl;
-    });
-    
-    // Set the canvas to the exact dimensions of the original image
-    tempCanvas.width = img.naturalWidth;
-    tempCanvas.height = img.naturalHeight;
-    
-    // Copy and scale the content from our drawing canvas
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-    
-    const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
-    return maskFile;
-  }
-
-  async function handleGenerativeFill() {
-    if (!imageUrl || !editPrompt) {
-      setError('Sono necessari l\'immagine e il prompt');
-      return;
-    }
+async function handleCanvasToMask() {
+  const canvas = document.getElementById('maskCanvas');
+  const tempCanvas = document.createElement('canvas');
+  
+  // Get the original image dimensions
+  const img = new Image();
+  await new Promise((resolve) => {
+    img.onload = resolve;
+    img.src = imageUrl;
+  });
+  
+  // Set the canvas to the exact dimensions of the original image
+  tempCanvas.width = img.naturalWidth;
+  tempCanvas.height = img.naturalHeight;
+  
+  // Copy and scale the content from our drawing canvas
+  const tempCtx = tempCanvas.getContext('2d');
+  // Impostiamo il contesto per creare una maschera bianco/nero
+  tempCtx.fillStyle = 'black';
+  tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+  tempCtx.globalCompositeOperation = 'source-over';
+  tempCtx.fillStyle = 'white';
+  // Copiamo il contenuto del canvas di disegno
+  tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+  
+  const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+  const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+  return maskFile;
+}
 
     setLoading(true);
     setError(null);
@@ -424,11 +423,11 @@ export default function Home() {
                       canvas.style.left = '0';
                       canvas.style.top = '0';
 
-                      const ctx = canvas.getContext('2d');
-                      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                      ctx.lineWidth = 20;
-                      ctx.lineCap = 'round';
+                    const ctx = canvas.getContext('2d');
+ctx.fillStyle = 'white'; // Ora usiamo bianco puro
+ctx.strokeStyle = 'white'; // E bianco puro anche per il pennello
+ctx.lineWidth = 20;
+ctx.lineCap = 'round';
 
                       let isDrawing = false;
                       let lastX = 0;
