@@ -145,30 +145,36 @@ export default function Home() {
     }
   }
 
-  async function handleCanvasToMask() {
-    const canvas = document.getElementById('maskCanvas');
-    // Creiamo un nuovo canvas temporaneo con le dimensioni corrette
-    const tempCanvas = document.createElement('canvas');
-    
-    // Get the original image dimensions
-    const img = new Image();
-    await new Promise((resolve) => {
-      img.onload = resolve;
-      img.src = imageUrl;
-    });
-    
-    // Set the canvas to the exact dimensions of the original image
-    tempCanvas.width = img.naturalWidth;
-    tempCanvas.height = img.naturalHeight;
-    
-    // Copy and scale the content from our drawing canvas
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-    
-    const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
-    return maskFile;
-  }
+async function handleCanvasToMask() {
+  const canvas = document.getElementById('maskCanvas');
+  const tempCanvas = document.createElement('canvas');
+  
+  // Get original image dimensions
+  const img = new Image();
+  await new Promise((resolve) => {
+    img.onload = resolve;
+    img.src = imageUrl;
+  });
+  
+  // Set canvas dimensions
+  tempCanvas.width = img.naturalWidth;
+  tempCanvas.height = img.naturalHeight;
+  
+  // Create white background (inverted from before)
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.fillStyle = 'white';
+  tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+  
+  // Copy black mask (inverted from before)
+  tempCtx.globalCompositeOperation = 'source-over';
+  tempCtx.fillStyle = 'black';
+  tempCtx.strokeStyle = 'black';
+  tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+  
+  const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+  const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+  return maskFile;
+}
 
   async function handleGenerativeFill() {
     if (!imageUrl || !editPrompt) {
@@ -491,8 +497,8 @@ export default function Home() {
                   <input
                     type="range"
                     min="5"
-                    max="50"
-                    defaultValue="20"
+                    max="150"
+                    defaultValue="50"
                     onChange={(e) => {
                       const canvas = document.getElementById('maskCanvas');
                       const ctx = canvas.getContext('2d');
