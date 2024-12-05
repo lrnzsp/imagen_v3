@@ -359,6 +359,29 @@ export default function Home() {
                       onClick={() => setIsOpenPalette(!isOpenPalette)}
                       className="w-full p-2 bg-black border border-white rounded-lg text-white cursor-pointer hover:bg-white/5 transition-all duration-300 flex items-center gap-2"
                     >
+                      <div className="flex gap-1">
+                        {selectedPalette.colors.map((color, index) => (
+                          <span 
+                            key={index} 
+                            className="inline-block w-3 h-3 rounded-sm"
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                      <span>{selectedPalette.name}</span>
+                    </div>
+                    
+                    {isOpenPalette && (
+                      <div className="absolute z-50 w-full mt-1 bg-black border border-white rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {Object.entries(colorPalettes).map(([value, palette]) => (
+                          <div
+                            key={value}
+                            onClick={() => {
+                              setColorPalette(value);
+                              setIsOpenPalette(false);
+                            }}
+                            className="p-2 hover:bg-white/5 cursor-pointer flex items-center gap-2"
+                          >
                             <div className="flex gap-1">
                               {palette.colors.map((color, index) => (
                                 <span 
