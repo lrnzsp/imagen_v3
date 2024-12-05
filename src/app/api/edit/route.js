@@ -14,14 +14,20 @@ export async function POST(req) {
     const imageBlob = await imageRes.blob();
     const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' });
 
-    // Prepara formData per Ideogram
+    // Prepara formData per Ideogram esattamente come nella documentazione
     const form = new FormData();
     form.append('image_file', imageFile);
     form.append('mask', maskFile);
     form.append('prompt', prompt);
     form.append('model', 'V_2');
+    form.append('style_type', 'REALISTIC');
 
-    // Chiamata API Ideogram
+    console.log('Sending to Ideogram:', {
+      hasImageFile: !!form.get('image_file'),
+      hasMask: !!form.get('mask'),
+      prompt: prompt
+    });
+
     const response = await fetch('https://api.ideogram.ai/edit', {
       method: 'POST',
       headers: {
@@ -31,6 +37,7 @@ export async function POST(req) {
     });
 
     const data = await response.json();
+    console.log('Ideogram response:', data);
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error:', error);
