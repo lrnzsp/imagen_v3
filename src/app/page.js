@@ -15,6 +15,9 @@ export default function Home() {
   const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
   const [colorPalette, setColorPalette] = useState('');
   const [isOpenPalette, setIsOpenPalette] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [maskFile, setMaskFile] = useState(null);
+  const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Quadrato',
@@ -78,12 +81,31 @@ export default function Home() {
     }
   }
 
+  function handleMaskChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setMaskFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setMaskPreviewUrl(objectUrl);
+    }
+  }
+
   function clearImage() {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
     }
     setImageFile(null);
     setPreviewUrl(null);
+    setIsEditMode(false);
+    clearMask();
+  }
+
+  function clearMask() {
+    if (maskPreviewUrl) {
+      URL.revokeObjectURL(maskPreviewUrl);
+    }
+    setMaskFile(null);
+    setMaskPreviewUrl(null);
   }
 
   async function handleSubmit(e) {
@@ -140,6 +162,44 @@ export default function Home() {
     }
   }
 
+  async function handleEdit(e) {
+    e.preventDefault();
+    if (!imageFile || !maskFile) {
+      setError('Sono necessarie sia l\'immagine originale che la maschera');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image_file', imageFile);
+      formData.append('mask', maskFile);
+      formData.append('prompt', `${FIXED_PREFIX} ${prompt}`);
+
+      const res = await fetch('/api/edit', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
+      
+      if (!data || !data.data || !data.data[0] || !data.data[0].url) {
+        throw new Error('Risposta API non valida: formato inatteso');
+      }
+      
+      setImageUrl(data.data[0].url);
+    } catch (err) {
+      console.error('Error details:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
   return (
@@ -149,10 +209,10 @@ export default function Home() {
           IMAGE GENERATOR
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
+        <form onSubmit={isEditMode ? handleEdit : handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-2">
-              Immagine di riferimento (opzionale)
+              Immagine {isEditMode ? 'da modificare' : 'di riferimento (opzionale)'}
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -169,13 +229,22 @@ export default function Home() {
                 Carica immagine
               </label>
               {imageFile && (
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
-                >
-                  Rimuovi
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
+                  >
+                    Rimuovi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditMode(!isEditMode)}
+                    className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
+                  >
+                    {isEditMode ? 'Annulla Edit' : 'Edit'}
+                  </button>
+                </>
               )}
             </div>
             {previewUrl && (
@@ -189,7 +258,48 @@ export default function Home() {
             )}
           </div>
 
-          {imageFile && (
+          {isEditMode && imageFile && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium mb-2">
+                Maschera per l'editing
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  onChange={handleMaskChange}
+                  className="hidden"
+                  id="mask-upload"
+                  accept="image/*"
+                />
+                <label
+                  htmlFor="mask-upload"
+                  className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Carica maschera
+                </label>
+                {maskFile && (
+                  <button
+                    type="button"
+                    onClick={clearMask}
+                    className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
+                  >
+                    Rimuovi
+                  </button>
+                )}
+              </div>
+              {maskPreviewUrl && (
+                <div className="mt-4">
+                  <img
+                    src={maskPreviewUrl}
+                    alt="Anteprima maschera"
+                    className="w-full max-h-48 object-contain rounded-xl border border-white/20"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isEditMode && imageFile && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium">
@@ -222,7 +332,7 @@ export default function Home() {
             </div>
           )}
 
-          {!imageFile && (
+          {!isEditMode && !imageFile && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -305,7 +415,7 @@ export default function Home() {
           
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (isEditMode && (!imageFile || !maskFile))}
             className="w-full bg-white text-black p-4 rounded-lg font-medium 
                      disabled:opacity-50 disabled:cursor-not-allowed
                      hover:bg-gray-200 
@@ -320,7 +430,7 @@ export default function Home() {
                 Generazione in corso...
               </span>
             ) : (
-              imageFile ? 'Remix Immagine' : 'Genera Immagine'
+              isEditMode ? 'Applica Edit' : (imageFile ? 'Remix Immagine' : 'Genera Immagine')
             )}
           </button>
         </form>
