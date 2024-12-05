@@ -1,26 +1,29 @@
-import { NextResponse } from 'next/server';
-
-export const runtime = 'edge';
-
 export async function POST(req) {
   try {
     const formData = await req.formData();
     const maskFile = formData.get('mask');
-    const imageUrl = formData.get('imageUrl'); // Ora riceviamo l'URL invece del file
+    const imageUrl = formData.get('imageUrl');
     const prompt = formData.get('prompt');
 
-    // Scarichiamo l'immagine nel backend
-    const imageResponse = await fetch(imageUrl);
-    const imageBlob = await imageResponse.blob();
+    // Verifichiamo che la maschera sia presente
+    console.log('Received mask:', maskFile);
+    console.log('Mask type:', maskFile?.type);
+    console.log('Mask size:', maskFile?.size);
 
     // Creiamo il nuovo FormData per Ideogram
     const ideogramFormData = new FormData();
     ideogramFormData.append('image_file', imageBlob, 'image.jpg');
-    ideogramFormData.append('mask', maskFile);
+    ideogramFormData.append('mask', maskFile, 'mask.png'); // Aggiungiamo un nome file
     ideogramFormData.append('prompt', prompt);
     ideogramFormData.append('model', 'V_2');
-    ideogramFormData.append('magic_prompt_option', 'ON');
-    ideogramFormData.append('style_type', 'REALISTIC');
+
+    // Log della richiesta a Ideogram
+    console.log('Sending to Ideogram:', {
+      hasImageFile: !!ideogramFormData.get('image_file'),
+      hasMask: !!ideogramFormData.get('mask'),
+      prompt,
+      model: 'V_2'
+    });
 
     const response = await fetch('https://api.ideogram.ai/edit', {
       method: 'POST',
@@ -31,6 +34,9 @@ export async function POST(req) {
     });
 
     const data = await response.json();
+    // Log della risposta
+    console.log('Ideogram response:', data);
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error in edit API:', error);
