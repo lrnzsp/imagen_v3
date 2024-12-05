@@ -17,8 +17,6 @@ export default function Home() {
   const [isOpenPalette, setIsOpenPalette] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
-  const [maskFile, setMaskFile] = useState(null);
-  const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Quadrato',
@@ -145,36 +143,36 @@ export default function Home() {
     }
   }
 
-async function handleCanvasToMask() {
-  const canvas = document.getElementById('maskCanvas');
-  const tempCanvas = document.createElement('canvas');
-  
-  // Get the original image dimensions
-  const img = new Image();
-  await new Promise((resolve) => {
-    img.onload = resolve;
-    img.src = imageUrl;
-  });
-  
-  // Set the canvas to the exact dimensions of the original image
-  tempCanvas.width = img.naturalWidth;
-  tempCanvas.height = img.naturalHeight;
-  
-  // Copy and scale the content from our drawing canvas
-  const tempCtx = tempCanvas.getContext('2d');
-  // Impostiamo il contesto per creare una maschera bianco/nero
-  tempCtx.fillStyle = 'black';
-  tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-  tempCtx.globalCompositeOperation = 'source-over';
-  tempCtx.fillStyle = 'white';
-  // Copiamo il contenuto del canvas di disegno
-  tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-  
-  const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-  const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
-  return maskFile;
-}
+  async function handleCanvasToMask() {
+    const canvas = document.getElementById('maskCanvas');
+    const tempCanvas = document.createElement('canvas');
+    
+    // Get original image dimensions
+    const img = new Image();
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.src = imageUrl;
+    });
+    
+    // Set canvas dimensions
+    tempCanvas.width = img.naturalWidth;
+    tempCanvas.height = img.naturalHeight;
+    
+    // Create black background
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.fillStyle = 'black';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // Copy white mask
+    tempCtx.globalCompositeOperation = 'source-over';
+    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+    
+    const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+    return maskFile;
+  }
 
+  async function handleGenerativeFill() {
     setLoading(true);
     setError(null);
 
@@ -216,7 +214,7 @@ async function handleCanvasToMask() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  return (
+return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
         <h1 className="text-4xl font-bold mb-12 text-center title-font">
@@ -290,7 +288,9 @@ async function handleCanvasToMask() {
                     className="w-full p-2 bg-black border border-white rounded-lg text-white focus:ring-2 focus:ring-white transition-all duration-300"
                   >
                     {Object.entries(aspectRatioOptions).map(([value, label]) => (
-                      <option key={value} value={value} className="bg-black">{label}</option>
+                      <option key={value} value={value} className="bg-black">
+                        {label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -310,7 +310,9 @@ async function handleCanvasToMask() {
                       className="w-full p-2 bg-black border border-white rounded-lg text-white focus:ring-2 focus:ring-white transition-all duration-300"
                     >
                       {Object.entries(aspectRatioOptions).map(([value, label]) => (
-                        <option key={value} value={value} className="bg-black">{label}</option>
+                        <option key={value} value={value} className="bg-black">
+                          {label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -410,7 +412,6 @@ async function handleCanvasToMask() {
                   alt="Immagine da modificare"
                   className="w-full rounded-lg"
                   onLoad={(e) => {
-                    // Otteniamo le dimensioni reali dell'immagine
                     const img = e.target;
                     const tempImg = new Image();
                     tempImg.onload = () => {
@@ -419,15 +420,12 @@ async function handleCanvasToMask() {
                       canvas.height = tempImg.naturalHeight;
                       canvas.style.width = '100%';
                       canvas.style.height = '100%';
-                      canvas.style.position = 'absolute';
-                      canvas.style.left = '0';
-                      canvas.style.top = '0';
 
-                    const ctx = canvas.getContext('2d');
-ctx.fillStyle = 'white'; // Ora usiamo bianco puro
-ctx.strokeStyle = 'white'; // E bianco puro anche per il pennello
-ctx.lineWidth = 20;
-ctx.lineCap = 'round';
+                      const ctx = canvas.getContext('2d');
+                      ctx.fillStyle = 'white';
+                      ctx.strokeStyle = 'white';
+                      ctx.lineWidth = 20;
+                      ctx.lineCap = 'round';
 
                       let isDrawing = false;
                       let lastX = 0;
@@ -566,4 +564,3 @@ ctx.lineCap = 'round';
       </div>
     </main>
   );
-}
