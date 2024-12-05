@@ -486,46 +486,128 @@ return (
                   Generazione in corso...
                 </span>
               ) : (
-                imageFile ? 'Remix Immagine' : 'Genera Immagine'
-              )}
+               imageFile ? 'Remix Immagine' : 'Genera Immagine'
+            )}
+          </button>
+        </form>
+      )}
+
+      {error && (
+        <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {!isEditMode && imageUrl && (
+        <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => {
+                setIsEditMode(true);
+                setEditPrompt('');
+              }}
+              className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+            >
+              Edit
             </button>
-          </form>
-        )}
-
-        {error && (
-          <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
-            {error}
           </div>
-        )}
+          <img 
+            src={imageUrl} 
+            alt="Immagine generata"
+            className="w-full rounded-lg" 
+          />
+        </div>
+      )}
 
-        {!isEditMode && imageUrl && (
-          <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
-            <div className="flex justify-end mb-4">
+      {isEditMode && (
+        <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold">Modalità Editing</h2>
+            
+            <div className="mt-4">
+              <img
+                src={imageUrl}
+                alt="Immagine da modificare"
+                className="w-full rounded-lg"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium mb-2">
+                Maschera per l'editing
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  onChange={handleMaskUpload}
+                  className="hidden"
+                  id="mask-upload"
+                  accept="image/*"
+                />
+                <label
+                  htmlFor="mask-upload"
+                  className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Carica maschera
+                </label>
+                {maskFile && (
+                  <button
+                    type="button"
+                    onClick={clearMask}
+                    className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
+                  >
+                    Rimuovi
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {maskPreviewUrl && (
+              <div className="mt-4">
+                <img
+                  src={maskPreviewUrl}
+                  alt="Maschera"
+                  className="w-full rounded-lg"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={editPrompt}
+                onChange={(e) => setEditPrompt(e.target.value)}
+                placeholder="Descrivi cosa vuoi generare nella zona mascherata..."
+                className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
+                required
+              />
+            </div>
+
+            <div className="flex gap-2">
               <button
-                onClick={async () => {
-                  try {
-                    const response = await fetch(imageUrl);
-                    const blob = await response.blob();
-                    const file = new File([blob], 'generated-image.jpg', { type: 'image/jpeg' });
-                    startEditing(file);
-                  } catch (err) {
-                    setError('Errore nel caricamento dell\'immagine per l\'editing');
-                    console.error(err);
-                  }
-                }}
-                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+                onClick={handleGenerativeFill}
+                disabled={loading || !maskFile || !editPrompt}
+                className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         hover:bg-gray-200 transition-all duration-300"
               >
-                Edit
+                {loading ? 'Elaborazione...' : 'Generative Fill'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditMode(false);
+                  clearMask();
+                  setEditPrompt('');
+                }}
+                className="px-6 py-4 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
+              >
+                Annulla
               </button>
             </div>
-            <img 
-              src={imageUrl} 
-              alt="Immagine generata"
-              className="w-full rounded-lg" 
-            />
           </div>
-        )}
-      </div>
-    </main>
-  );
+        </div>
+      )}
+    </div>
+  </main>
+);
 }
