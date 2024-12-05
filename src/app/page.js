@@ -441,46 +441,47 @@ export default function Home() {
           </div>
         )}
 
-  {imageUrl && (
-  <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
-    <div className="flex justify-end mb-4">
-      <button
-        onClick={async () => {
-          try {
-            // Scarica l'immagine dall'URL
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
-            
-            // Crea l'URL dell'oggetto per l'anteprima
-            const objectUrl = URL.createObjectURL(file);
-            
-            // Imposta l'immagine nel form
-            setImageFile(file);
-            setPreviewUrl(objectUrl);
-            setIsEditMode(true);
-            
-            // Scroll verso l'alto per vedere il form
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } catch (err) {
-            setError('Errore nel caricamento dell\'immagine per l\'editing');
-            console.error(err);
-          }
-        }}
-        className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-      >
-        Edit Immagine
-      </button>
-    </div>
-    <img 
-      src={imageUrl} 
-      alt="Immagine generata"
-      className="w-full rounded-lg" 
-    />
-  </div>
-)}
+  <main className="min-h-screen bg-black text-white p-8">
+        <div className="max-w-xl mx-auto">
+          <h1>...</h1>
+          <form>...</form>
+          
+          {error && (
+            <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
+              {error}
+            </div>
+          )}
 
-      </div>
-    </main>
-  );
-}
+          {imageUrl && (
+            <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(imageUrl);
+                      const blob = await response.blob();
+                      const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+                      const objectUrl = URL.createObjectURL(file);
+                      setImageFile(file);
+                      setPreviewUrl(objectUrl);
+                      setIsEditMode(true);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } catch (err) {
+                      setError('Errore nel caricamento dell\'immagine per l\'editing');
+                      console.error(err);
+                    }
+                  }}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Edit Immagine
+                </button>
+              </div>
+              <img 
+                src={imageUrl} 
+                alt="Immagine generata"
+                className="w-full rounded-lg" 
+              />
+            </div>
+          )}
+        </div>
+      </main>
