@@ -182,35 +182,20 @@ async function handleGenerativeFill() {
 
   try {
     const formData = new FormData();
-    formData.append('imageUrl', imageUrl); // Inviamo solo l'URL
+    formData.append('imageUrl', imageUrl);
     formData.append('mask', maskFile);
     formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
+
+    // Verifichiamo il contenuto del FormData
+    console.log('Mask file:', maskFile);
+    console.log('Mask file type:', maskFile.type);
+    console.log('Mask file size:', maskFile.size);
 
     const res = await fetch('/api/edit', {
       method: 'POST',
       body: formData
     });
-
-    const data = await res.json();
-    
-    if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
-    
-    if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-      throw new Error('Risposta API non valida: formato inatteso');
-    }
-    
-    setImageUrl(data.data[0].url);
-    setIsEditMode(false);
-    clearMask();
-    setEditPrompt('');
-  } catch (err) {
-    console.error('Error details:', err);
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-}
-
+    // ... resto del codice
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
   return (
