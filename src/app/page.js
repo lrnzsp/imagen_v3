@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 const FIXED_PREFIX = "a fashion photograph of";
 
-export default function Home() {
+export default function Home() { 
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,24 +17,26 @@ export default function Home() {
   const [isOpenPalette, setIsOpenPalette] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [maskFile, setMaskFile] = useState(null);
+  const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
 
   const aspectRatioOptions = {
-    'ASPECT_1_1': '1:1 Square',
-    'ASPECT_10_16': '10:16 Vertical',
-    'ASPECT_16_10': '16:10 Panoramic',
+    'ASPECT_1_1': '1:1 Quadrato',
+    'ASPECT_10_16': '10:16 Verticale',
+    'ASPECT_16_10': '16:10 Panoramico',
     'ASPECT_9_16': '9:16 Mobile',
     'ASPECT_16_9': '16:9 Widescreen',
-    'ASPECT_3_2': '3:2 Photo',
-    'ASPECT_2_3': '2:3 Portrait',
+    'ASPECT_3_2': '3:2 Fotografia',
+    'ASPECT_2_3': '2:3 Ritratto',
     'ASPECT_4_3': '4:3 Standard',
-    'ASPECT_3_4': '3:4 Vertical',
-    'ASPECT_1_3': '1:3 Vertical Banner',
-    'ASPECT_3_1': '3:1 Horizontal Banner'
+    'ASPECT_3_4': '3:4 Verticale',
+    'ASPECT_1_3': '1:3 Banner Verticale',
+    'ASPECT_3_1': '3:1 Banner Orizzontale'
   };
-
+ 
   const colorPalettes = {
     '': { 
-      name: 'No palette', 
+      name: 'Nessuna palette', 
       colors: [] 
     },
     'EMBER': { 
@@ -128,10 +130,10 @@ export default function Home() {
       const data = await res.json();
       console.log('API Response:', data);
       
-      if (!res.ok) throw new Error(data.error || 'Processing error');
+      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
       
       if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error('Invalid API response: unexpected format');
+        throw new Error('Risposta API non valida: formato inatteso');
       }
       
       setImageUrl(data.data[0].url);
@@ -143,87 +145,85 @@ export default function Home() {
     }
   }
 
-  async function handleCanvasToMask() {
-    const canvas = document.getElementById('maskCanvas');
-    const tempCanvas = document.createElement('canvas');
-    
-    const img = new Image();
-    await new Promise((resolve) => {
-      img.onload = resolve;
-      img.src = imageUrl;
-    });
-    
-    tempCanvas.width = img.naturalWidth;
-    tempCanvas.height = img.naturalHeight;
-    
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.fillStyle = 'black';
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    
-    tempCtx.globalCompositeOperation = 'destination-out';
-    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-    
-    const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
-    return maskFile;
-  }
-
- async function handleGenerativeFill() {
-  if (!imageUrl || !editPrompt) {
-    setError('Both image and prompt are required');
-    return;
-  }
-
-  setLoading(true);
-  setError(null);
-
-  try {
-    const maskFile = await handleCanvasToMask();
-    const formData = new FormData();
-    formData.append('imageUrl', imageUrl);
-    formData.append('mask', maskFile);
-    formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
-
-    const res = await fetch('/api/edit', {
-      method: 'POST',
-      body: formData
-    });
-
-    const data = await res.json();
-    console.log('Edit API Response:', data);
-    
-    if (!res.ok) {
-      const errorMessage = data.errors ? data.errors[0] : data.error || 'Processing error';
-      throw new Error(errorMessage);
-    }
-    
-    // Modifichiamo la verifica della risposta
-    if (data && data.url) {
-      setImageUrl(data.url);
-    } else if (data && data.data && data.data[0] && data.data[0].url) {
-      setImageUrl(data.data[0].url);
-    } else {
-      throw new Error('Invalid API response format');
-    }
-
-    setIsEditMode(false);
-    setEditPrompt('');
-
-    setTimeout(() => {
-      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
-    }, 100);
-
-  } catch (err) {
-    console.error('Error details:', err);
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
+async function handleCanvasToMask() {
+  const canvas = document.getElementById('maskCanvas');
+  const tempCanvas = document.createElement('canvas');
+  
+  // Get original image dimensions
+  const img = new Image();
+  await new Promise((resolve) => {
+    img.onload = resolve;
+    img.src = imageUrl;
+  });
+  
+  // Set canvas dimensions
+  tempCanvas.width = img.naturalWidth;
+  tempCanvas.height = img.naturalHeight;
+  
+  // Create white background (inverted from before)
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.fillStyle = 'white';
+  tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+  
+  // Copy black mask (inverted from before)
+  tempCtx.globalCompositeOperation = 'source-over';
+  tempCtx.fillStyle = 'black';
+  tempCtx.strokeStyle = 'black';
+  tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+  
+  const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+  const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+  return maskFile;
 }
+
+  async function handleGenerativeFill() {
+    if (!imageUrl || !editPrompt) {
+      setError('Sono necessari l\'immagine e il prompt');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const maskFile = await handleCanvasToMask();
+      console.log("Sending mask file:", maskFile);
+      console.log("Mask file type:", maskFile.type);
+      console.log("Mask file size:", maskFile.size);
+
+      const formData = new FormData();
+      formData.append('imageUrl', imageUrl);
+      formData.append('mask', maskFile);
+      formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
+
+      const res = await fetch('/api/edit', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      console.log('Edit API Response:', data);
+      
+      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
+      
+      if (!data || !data.data || !data.data[0] || !data.data[0].url) {
+        throw new Error('Risposta API non valida: formato inatteso');
+      }
+      
+      setImageUrl(data.data[0].url);
+      setIsEditMode(false);
+      setEditPrompt('');
+    } catch (err) {
+      console.error('Error details:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-return (
+  return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
         <h1 className="text-4xl font-bold mb-12 text-center title-font">
@@ -234,7 +234,7 @@ return (
           <form onSubmit={handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
             <div className="space-y-2">
               <label className="block text-sm font-medium mb-2">
-                Reference image (optional)
+                Immagine di riferimento (opzionale)
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -248,7 +248,7 @@ return (
                   htmlFor="file-upload"
                   className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Upload image
+                  Carica immagine
                 </label>
                 {imageFile && (
                   <button
@@ -256,7 +256,7 @@ return (
                     onClick={clearImage}
                     className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
                   >
-                    Remove
+                    Rimuovi
                   </button>
                 )}
               </div>
@@ -264,7 +264,7 @@ return (
                 <div className="mt-4">
                   <img
                     src={previewUrl}
-                    alt="Preview"
+                    alt="Anteprima"
                     className="w-full max-h-48 object-contain rounded-xl border border-white/20"
                   />
                 </div>
@@ -275,7 +275,7 @@ return (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium">
-                    Image weight: {imageWeight}%
+                    Peso dell&apos;immagine: {imageWeight}%
                   </label>
                   <input
                     type="range"
@@ -289,7 +289,7 @@ return (
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Output format
+                    Formato Output
                   </label>
                   <select
                     value={aspectRatio}
@@ -309,7 +309,7 @@ return (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Format
+                      Formato
                     </label>
                     <select
                       value={aspectRatio}
@@ -324,7 +324,7 @@ return (
 
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Color palette
+                      Palette Colori
                     </label>
                     <div className="relative">
                       <div
@@ -379,7 +379,7 @@ return (
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe the image you want to generate..."
+                placeholder="Descrivi l'immagine che vuoi generare..."
                 className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
                 required
               />
@@ -399,24 +399,25 @@ return (
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Processing...
+                  Generazione in corso...
                 </span>
               ) : (
-                imageFile ? 'Remix Image' : 'Generate Image'
+                imageFile ? 'Remix Immagine' : 'Genera Immagine'
               )}
             </button>
           </form>
         ) : (
           <div className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
             <div className="space-y-4">
-              <h2 className="text-xl font-bold">Edit Mode</h2>
+              <h2 className="text-xl font-bold">Modalità Editing</h2>
               
               <div className="mt-4 relative">
                 <img
                   src={imageUrl}
-                  alt="Image to edit"
+                  alt="Immagine da modificare"
                   className="w-full rounded-lg"
                   onLoad={(e) => {
+                    // Otteniamo le dimensioni reali dell'immagine
                     const img = e.target;
                     const tempImg = new Image();
                     tempImg.onload = () => {
@@ -430,9 +431,9 @@ return (
                       canvas.style.top = '0';
 
                       const ctx = canvas.getContext('2d');
-                      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-                      ctx.lineWidth = 50;
+                      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                      ctx.lineWidth = 20;
                       ctx.lineCap = 'round';
 
                       let isDrawing = false;
@@ -489,10 +490,10 @@ return (
                   }}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Clear mask
+                  Pulisci Maschera
                 </button>
                 <div className="flex items-center gap-2 flex-1">
-                  <span className="text-sm whitespace-nowrap">Brush size:</span>
+                  <span className="text-sm whitespace-nowrap">Dimensione:</span>
                   <input
                     type="range"
                     min="5"
@@ -513,7 +514,7 @@ return (
                   type="text"
                   value={editPrompt}
                   onChange={(e) => setEditPrompt(e.target.value)}
-                  placeholder="Describe what you want to generate in the masked area..."
+                  placeholder="Descrivi cosa vuoi generare nella zona mascherata..."
                   className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
                   required
                 />
@@ -527,15 +528,7 @@ return (
                            disabled:opacity-50 disabled:cursor-not-allowed
                            hover:bg-gray-200 transition-all duration-300"
                 >
-                  {loading ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </span>
-                  ) : 'Generative Fill'}
+                  {loading ? 'Elaborazione...' : 'Generative Fill'}
                 </button>
                 <button
                   onClick={() => {
@@ -544,7 +537,7 @@ return (
                   }}
                   className="px-6 py-4 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
                 >
-                  Cancel
+                  Annulla
                 </button>
               </div>
             </div>
@@ -572,7 +565,7 @@ return (
             </div>
             <img 
               src={imageUrl} 
-              alt="Generated image"
+              alt="Immagine generata"
               className="w-full rounded-lg" 
             />
           </div>
@@ -580,4 +573,4 @@ return (
       </div>
     </main>
   );
-} 
+}
