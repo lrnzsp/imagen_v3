@@ -15,9 +15,11 @@ export default function Home() {
   const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
   const [colorPalette, setColorPalette] = useState('');
   const [isOpenPalette, setIsOpenPalette] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingImage, setEditingImage] = useState(null);
   const [maskFile, setMaskFile] = useState(null);
   const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Quadrato',
@@ -81,7 +83,7 @@ export default function Home() {
     }
   }
 
-  function handleMaskChange(e) {
+  function handleMaskUpload(e) {
     const file = e.target.files[0];
     if (file) {
       setMaskFile(file);
@@ -106,6 +108,14 @@ export default function Home() {
     }
     setMaskFile(null);
     setMaskPreviewUrl(null);
+  }
+
+  function startEditing(imageData) {
+    setEditingImage(imageData);
+    setIsEditMode(true);
+    setMaskFile(null);
+    setMaskPreviewUrl(null);
+    setEditPrompt('');
   }
 
   async function handleSubmit(e) {
@@ -162,10 +172,9 @@ export default function Home() {
     }
   }
 
-  async function handleEdit(e) {
-    e.preventDefault();
-    if (!imageFile || !maskFile) {
-      setError('Sono necessarie sia l\'immagine originale che la maschera');
+  async function handleGenerativeFill() {
+    if (!editingImage || !maskFile || !editPrompt) {
+      setError('Sono necessari l\'immagine, la maschera e il prompt');
       return;
     }
 
@@ -174,9 +183,9 @@ export default function Home() {
 
     try {
       const formData = new FormData();
-      formData.append('image_file', imageFile);
+      formData.append('image_file', editingImage);
       formData.append('mask', maskFile);
-      formData.append('prompt', `${FIXED_PREFIX} ${prompt}`);
+      formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
 
       const res = await fetch('/api/edit', {
         method: 'POST',
@@ -192,6 +201,10 @@ export default function Home() {
       }
       
       setImageUrl(data.data[0].url);
+      setIsEditMode(false);
+      setEditingImage(null);
+      clearMask();
+      setEditPrompt('');
     } catch (err) {
       console.error('Error details:', err);
       setError(err.message);
@@ -202,34 +215,126 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  return (
+return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
         <h1 className="text-4xl font-bold mb-12 text-center title-font">
           IMAGE GENERATOR
         </h1>
 
-        <form onSubmit={isEditMode ? handleEdit : handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium mb-2">
-              Immagine {isEditMode ? 'da modificare' : 'di riferimento (opzionale)'}
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="file"
-                onChange={handleFileChange}
-                className="hidden"
-                id="file-upload"
-                accept="image/*"
-              />
-              <label
-                htmlFor="file-upload"
-                className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
-              >
-                Carica immagine
+        {isEditMode ? (
+          <div className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold">Modalità Editing</h2>
+              
+              {editingImage && (
+                <div className="mt-4">
+                  <img
+                    src={URL.createObjectURL(editingImage)}
+                    alt="Immagine da modificare"
+                    className="w-full rounded-lg"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-2">
+                  Maschera per l'editing
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    onChange={handleMaskUpload}
+                    className="hidden"
+                    id="mask-upload"
+                    accept="image/*"
+                  />
+                  <label
+                    htmlFor="mask-upload"
+                    className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
+                  >
+                    Carica maschera
+                  </label>
+                  {maskFile && (
+                    <button
+                      type="button"
+                      onClick={clearMask}
+                      className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
+                    >
+                      Rimuovi maschera
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {maskPreviewUrl && (
+                <div className="mt-4">
+                  <img
+                    src={maskPreviewUrl}
+                    alt="Maschera"
+                    className="w-full rounded-lg"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={editPrompt}
+                  onChange={(e) => setEditPrompt(e.target.value)}
+                  placeholder="Descrivi cosa vuoi generare nella zona mascherata..."
+                  className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerativeFill}
+                  disabled={loading || !maskFile || !editPrompt}
+                  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           hover:bg-gray-200 transition-all duration-300"
+                >
+                  {loading ? 'Elaborazione...' : 'Generative Fill'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditMode(false);
+                    setEditingImage(null);
+                    clearMask();
+                    setEditPrompt('');
+                  }}
+                  className="px-6 py-4 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium mb-2">
+                Immagine di riferimento (opzionale)
               </label>
-              {imageFile && (
-                <>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="file-upload"
+                  accept="image/*"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Carica immagine
+                </label>
+                {imageFile && (
                   <button
                     type="button"
                     onClick={clearImage}
@@ -237,107 +342,38 @@ export default function Home() {
                   >
                     Rimuovi
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditMode(!isEditMode)}
-                    className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
-                  >
-                    {isEditMode ? 'Annulla Edit' : 'Edit'}
-                  </button>
-                </>
-              )}
-            </div>
-            {previewUrl && (
-              <div className="mt-4">
-                <img
-                  src={previewUrl}
-                  alt="Anteprima"
-                  className="w-full max-h-48 object-contain rounded-xl border border-white/20"
-                />
-              </div>
-            )}
-          </div>
-
-          {isEditMode && imageFile && (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium mb-2">
-                Maschera per l'editing
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  onChange={handleMaskChange}
-                  className="hidden"
-                  id="mask-upload"
-                  accept="image/*"
-                />
-                <label
-                  htmlFor="mask-upload"
-                  className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
-                >
-                  Carica maschera
-                </label>
-                {maskFile && (
-                  <button
-                    type="button"
-                    onClick={clearMask}
-                    className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
-                  >
-                    Rimuovi
-                  </button>
                 )}
               </div>
-              {maskPreviewUrl && (
+              {previewUrl && (
                 <div className="mt-4">
                   <img
-                    src={maskPreviewUrl}
-                    alt="Anteprima maschera"
+                    src={previewUrl}
+                    alt="Anteprima"
                     className="w-full max-h-48 object-contain rounded-xl border border-white/20"
                   />
                 </div>
               )}
             </div>
-          )}
 
-          {!isEditMode && imageFile && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">
-                  Peso dell&apos;immagine: {imageWeight}%
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  value={imageWeight}
-                  onChange={(e) => setImageWeight(parseInt(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Formato Output
-                </label>
-                <select
-                  value={aspectRatio}
-                  onChange={(e) => setAspectRatio(e.target.value)}
-                  className="w-full p-2 bg-black border border-white rounded-lg text-white focus:ring-2 focus:ring-white transition-all duration-300"
-                >
-                  {Object.entries(aspectRatioOptions).map(([value, label]) => (
-                    <option key={value} value={value} className="bg-black">{label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {!isEditMode && !imageFile && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            {imageFile && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">
+                    Peso dell&apos;immagine: {imageWeight}%
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={imageWeight}
+                    onChange={(e) => setImageWeight(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Formato
+                    Formato Output
                   </label>
                   <select
                     value={aspectRatio}
@@ -349,91 +385,112 @@ export default function Home() {
                     ))}
                   </select>
                 </div>
+              </div>
+            )}
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Palette Colori
-                  </label>
-                  <div className="relative">
-                    <div
-                      onClick={() => setIsOpenPalette(!isOpenPalette)}
-                      className="w-full p-2 bg-black border border-white rounded-lg text-white cursor-pointer hover:bg-white/5 transition-all duration-300 flex items-center gap-2"
+            {!imageFile && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Formato
+                    </label>
+                    <select
+                      value={aspectRatio}
+                      onChange={(e) => setAspectRatio(e.target.value)}
+                      className="w-full p-2 bg-black border border-white rounded-lg text-white focus:ring-2 focus:ring-white transition-all duration-300"
                     >
-                      <div className="flex gap-1">
-                        {selectedPalette.colors.map((color, index) => (
-                          <span 
-                            key={index} 
-                            className="inline-block w-3 h-3 rounded-sm"
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
+                      {Object.entries(aspectRatioOptions).map(([value, label]) => (
+                        <option key={value} value={value} className="bg-black">{label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Palette Colori
+                    </label>
+                    <div className="relative">
+                      <div
+                        onClick={() => setIsOpenPalette(!isOpenPalette)}
+                        className="w-full p-2 bg-black border border-white rounded-lg text-white cursor-pointer hover:bg-white/5 transition-all duration-300 flex items-center gap-2"
+                      >
+                        <div className="flex gap-1">
+                          {selectedPalette.colors.map((color, index) => (
+                            <span 
+                              key={index} 
+                              className="inline-block w-3 h-3 rounded-sm"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                        <span>{selectedPalette.name}</span>
                       </div>
-                      <span>{selectedPalette.name}</span>
-                    </div>
-                    
-                    {isOpenPalette && (
-                      <div className="absolute z-50 w-full mt-1 bg-black border border-white rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {Object.entries(colorPalettes).map(([value, palette]) => (
-                          <div
-                            key={value}
-                            onClick={() => {
-                              setColorPalette(value);
-                              setIsOpenPalette(false);
-                            }}
-                            className="p-2 hover:bg-white/5 cursor-pointer flex items-center gap-2"
-                          >
-                            <div className="flex gap-1">
-                              {palette.colors.map((color, index) => (
-                                <span 
-                                  key={index}
-                                  className="inline-block w-3 h-3 rounded-sm"
-                                  style={{ backgroundColor: color }}
-                                />
-                              ))}
+                      
+                      {isOpenPalette && (
+                        <div className="absolute z-50 w-full mt-1 bg-black border border-white rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {Object.entries(colorPalettes).map(([value, palette]) => (
+                            <div
+                              key={value}
+                              onClick={() => {
+                                setColorPalette(value);
+                                setIsOpenPalette(false);
+                              }}
+                              className="p-2 hover:bg-white/5 cursor-pointer flex items-center gap-2"
+                            >
+                              <div className="flex gap-1">
+                                {palette.colors.map((color, index) => (
+                                  <span 
+                                    key={index}
+                                    className="inline-block w-3 h-3 rounded-sm"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                ))}
+                              </div>
+                              <span>{palette.name}</span>
                             </div>
-                            <span>{palette.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Descrivi l'immagine che vuoi generare..."
-              className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
-              required
-            />
-          </div>
-          
-          <button
-            type="submit"
-            disabled={loading || (isEditMode && (!imageFile || !maskFile))}
-            className="w-full bg-white text-black p-4 rounded-lg font-medium 
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     hover:bg-gray-200 
-                     transform transition-all duration-300"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Generazione in corso...
-              </span>
-            ) : (
-              isEditMode ? 'Applica Edit' : (imageFile ? 'Remix Immagine' : 'Genera Immagine')
             )}
-          </button>
-        </form>
+
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Descrivi l'immagine che vuoi generare..."
+                className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
+                required
+              />
+            </div>
+            
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-white text-black p-4 rounded-lg font-medium 
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       hover:bg-gray-200 
+                       transform transition-all duration-300"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generazione in corso...
+                </span>
+              ) : (
+                imageFile ? 'Remix Immagine' : 'Genera Immagine'
+              )}
+            </button>
+          </form>
+        )}
 
         {error && (
           <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
@@ -441,7 +498,7 @@ export default function Home() {
           </div>
         )}
 
-        {imageUrl && (
+        {!isEditMode && imageUrl && (
           <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
             <div className="flex justify-end mb-4">
               <button
@@ -449,12 +506,8 @@ export default function Home() {
                   try {
                     const response = await fetch(imageUrl);
                     const blob = await response.blob();
-                    const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
-                    const objectUrl = URL.createObjectURL(file);
-                    setImageFile(file);
-                    setPreviewUrl(objectUrl);
-                    setIsEditMode(true);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    const file = new File([blob], 'generated-image.jpg', { type: 'image/jpeg' });
+                    startEditing(file);
                   } catch (err) {
                     setError('Errore nel caricamento dell\'immagine per l\'editing');
                     console.error(err);
@@ -462,7 +515,7 @@ export default function Home() {
                 }}
                 className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
               >
-                Edit Immagine
+                Edit
               </button>
             </div>
             <img 
