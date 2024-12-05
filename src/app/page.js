@@ -144,73 +144,101 @@ export default function Home() {
   }
 
   async function handleCanvasToMask() {
-    const canvas = document.getElementById('maskCanvas');
-    const tempCanvas = document.createElement('canvas');
-    
-    // Get original image dimensions
-    const img = new Image();
-    await new Promise((resolve) => {
-      img.onload = resolve;
-      img.src = imageUrl;
+  const canvas = document.getElementById('maskCanvas');
+  const tempCanvas = document.createElement('canvas');
+  
+  // Get original image dimensions
+  const img = new Image();
+  await new Promise((resolve) => {
+    img.onload = resolve;
+    img.src = imageUrl;
+  });
+  
+  // Set canvas dimensions
+  tempCanvas.width = img.naturalWidth;
+  tempCanvas.height = img.naturalHeight;
+  
+  // Create white background (inverted from before)
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.fillStyle = 'white';
+  tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+  
+  // Copy black mask (inverted from before)
+  tempCtx.globalCompositeOperation = 'source-over';
+  tempCtx.fillStyle = 'black';
+  tempCtx.strokeStyle = 'black';
+  tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+  
+  const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+  const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+  return maskFile;
+}
+  
+
+async function handleGenerativeFill() {
+  if (!imageUrl || !editPrompt) {
+    setError('Both image and prompt are required');
+    return;
+  }
+
+  setLoading(true);
+  setError(null);
+
+  try {
+    const maskFile = await handleCanvasToMask();
+    console.log("Sending mask file:", maskFile);
+    console.log("Mask file type:", maskFile.type);
+    console.log("Mask file size:", maskFile.size);
+
+    const formData = new FormData();
+    formData.append('imageUrl', imageUrl);
+    formData.append('mask', maskFile);
+    formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
+
+    const res = await fetch('/api/edit', {
+      method: 'POST',
+      body: formData
     });
+
+    const data = await res.json();
+    console.log('Edit API Response:', data);
     
-    // Set canvas dimensions
-    tempCanvas.width = img.naturalWidth;
-    tempCanvas.height = img.naturalHeight;
-    
-    // Create black background
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.fillStyle = 'black';
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    
-    // Copy white mask
-    tempCtx.globalCompositeOperation = 'source-over';
-    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-    
-    const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
-    return maskFile;
-  }
-
-  async function handleGenerativeFill() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const maskFile = await handleCanvasToMask();
-      console.log("Sending mask file:", maskFile);
-      console.log("Mask file type:", maskFile.type);
-      console.log("Mask file size:", maskFile.size);
-
-      const formData = new FormData();
-      formData.append('imageUrl', imageUrl);
-      formData.append('mask', maskFile);
-      formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
-
-      const res = await fetch('/api/edit', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-      console.log('Edit API Response:', data);
-      
-      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
-      
-      if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error('Risposta API non valida: formato inatteso');
+    if (!res.ok) {
+      if (data.errors) {
+        throw new Error(data.errors[0] || 'Error during processing');
       }
-      
-      setImageUrl(data.data[0].url);
-      setIsEditMode(false);
-      setEditPrompt('');
-    } catch (err) {
-      console.error('Error details:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      throw new Error(data.error || 'Error during processing');
     }
+    
+    if (!data || !data.data || !data.data[0] || !data.data[0].url) {
+      throw new Error('Invalid API response: unexpected format');
+    }
+    
+    // Save old URL for history
+    const oldImageUrl = imageUrl;
+    
+    // Set new URL
+    setImageUrl(data.data[0].url);
+    
+    // Reset edit mode
+    setIsEditMode(false);
+    setEditPrompt('');
+
+    // Add to history and scroll to new image
+    setTimeout(() => {
+      window.scrollTo({ 
+        top: document.documentElement.scrollHeight,
+        behavior: 'smooth'
+      });
+    }, 100);
+
+  } catch (err) {
+    console.error('Error details:', err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
   }
+}
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
