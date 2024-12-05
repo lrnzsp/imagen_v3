@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 const FIXED_PREFIX = "a fashion photograph of";
 
-export default function Home() {
+export default function Home() { 
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
