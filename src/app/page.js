@@ -211,16 +211,14 @@ export default function Home() {
     }
   }
 
-  // Aggiungi questa funzione dopo handleGenerativeFill
-async function handleCanvasToMask() {
-  const canvas = document.getElementById('maskCanvas');
-  const maskBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-  const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
-  return maskFile;
-}
+  async function handleCanvasToMask() {
+    const canvas = document.getElementById('maskCanvas');
+    const maskBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+    return maskFile;
+  }
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
-
   return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
@@ -228,7 +226,7 @@ async function handleCanvasToMask() {
           IMAGE GENERATOR
         </h1>
 
-        {!isEditMode && (
+        {!isEditMode ? (
           <form onSubmit={handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
             <div className="space-y-2">
               <label className="block text-sm font-medium mb-2">
@@ -404,44 +402,15 @@ async function handleCanvasToMask() {
               )}
             </button>
           </form>
-        )}
-
-        {error && (
-          <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        {!isEditMode && imageUrl && (
-          <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => {
-                  setIsEditMode(true);
-                  setEditPrompt('');
-                }}
-                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-              >
-                Edit
-              </button>
-            </div>
-            <img 
-              src={imageUrl} 
-              alt="Immagine generata"
-              className="w-full rounded-lg" 
-            />
-          </div>
-        )}
-
-        {isEditMode && (
-          <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
+        ) : (
+          <div className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
             <div className="space-y-4">
               <h2 className="text-xl font-bold">Modalità Editing</h2>
               
               <div className="mt-4 relative">
                 <canvas
                   id="maskCanvas"
-                  className="absolute top-0 left-0 cursor-crosshair"
+                  className="absolute top-0 left-0 cursor-crosshair z-10"
                   style={{ 
                     backgroundColor: 'transparent',
                     touchAction: 'none'
@@ -469,32 +438,44 @@ async function handleCanvasToMask() {
                     let lastX = 0;
                     let lastY = 0;
 
-                    canvas.onmousedown = (e) => {
-                      isDrawing = true;
-                      [lastX, lastY] = [e.offsetX, e.offsetY];
+                    const getCoordinates = (e) => {
+                      const rect = canvas.getBoundingClientRect();
+                      const scaleX = canvas.width / rect.width;
+                      const scaleY = canvas.height / rect.height;
+                      return [
+                        (e.clientX - rect.left) * scaleX,
+                        (e.clientY - rect.top) * scaleY
+                      ];
                     };
 
-                    canvas.onmousemove = (e) => {
+                    const startDrawing = (e) => {
+                      isDrawing = true;
+                      [lastX, lastY] = getCoordinates(e);
+                    };
+
+                    const draw = (e) => {
                       if (!isDrawing) return;
+                      const [currentX, currentY] = getCoordinates(e);
                       ctx.beginPath();
                       ctx.moveTo(lastX, lastY);
-                      ctx.lineTo(e.offsetX, e.offsetY);
+                      ctx.lineTo(currentX, currentY);
                       ctx.stroke();
-                      [lastX, lastY] = [e.offsetX, e.offsetY];
+                      [lastX, lastY] = [currentX, currentY];
                     };
 
-                    canvas.onmouseup = () => {
+                    const stopDrawing = () => {
                       isDrawing = false;
                     };
 
-                    canvas.onmouseleave = () => {
-                      isDrawing = false;
-                    };
+                    canvas.addEventListener('mousedown', startDrawing);
+                    canvas.addEventListener('mousemove', draw);
+                    canvas.addEventListener('mouseup', stopDrawing);
+                    canvas.addEventListener('mouseleave', stopDrawing);
                   }}
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex items-center gap-4">
                 <button
                   onClick={() => {
                     const canvas = document.getElementById('maskCanvas');
@@ -505,8 +486,8 @@ async function handleCanvasToMask() {
                 >
                   Pulisci Maschera
                 </button>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">Dimensione pennello:</span>
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-sm whitespace-nowrap">Dimensione:</span>
                   <input
                     type="range"
                     min="5"
@@ -517,7 +498,7 @@ async function handleCanvasToMask() {
                       const ctx = canvas.getContext('2d');
                       ctx.lineWidth = e.target.value;
                     }}
-                    className="w-32"
+                    className="flex-1"
                   />
                 </div>
               </div>
@@ -560,6 +541,34 @@ async function handleCanvasToMask() {
             </div>
           </div>
         )}
+
+        {error && (
+          <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {!isEditMode && imageUrl && (
+          <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => {
+                  setIsEditMode(true);
+                  setEditPrompt('');
+                }}
+                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+              >
+                Edit
+              </button>
+            </div>
+            <img 
+              src={imageUrl} 
+              alt="Immagine generata"
+              className="w-full rounded-lg" 
+            />
+          </div>
+        )}
       </div>
     </main>
   );
+}
