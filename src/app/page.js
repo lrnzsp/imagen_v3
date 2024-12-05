@@ -15,11 +15,10 @@ export default function Home() {
   const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
   const [colorPalette, setColorPalette] = useState('');
   const [isOpenPalette, setIsOpenPalette] = useState(false);
-  const [editingImage, setEditingImage] = useState(null);
-  const [maskFile, setMaskFile] = useState(null);
-  const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
   const [editPrompt, setEditPrompt] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [maskFile, setMaskFile] = useState(null);
+  const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Quadrato',
@@ -86,6 +85,9 @@ export default function Home() {
   function handleMaskUpload(e) {
     const file = e.target.files[0];
     if (file) {
+      console.log("Mask file selected:", file);
+      console.log("Mask file type:", file.type);
+      console.log("Mask file size:", file.size);
       setMaskFile(file);
       const objectUrl = URL.createObjectURL(file);
       setMaskPreviewUrl(objectUrl);
@@ -108,14 +110,6 @@ export default function Home() {
     }
     setMaskFile(null);
     setMaskPreviewUrl(null);
-  }
-
-  function startEditing(imageData) {
-    setEditingImage(imageData);
-    setIsEditMode(true);
-    setMaskFile(null);
-    setMaskPreviewUrl(null);
-    setEditPrompt('');
   }
 
   async function handleSubmit(e) {
@@ -171,31 +165,52 @@ export default function Home() {
       setLoading(false);
     }
   }
-async function handleGenerativeFill() {
-  if (!imageUrl || !maskFile || !editPrompt) {
-    setError('Sono necessari l\'immagine, la maschera e il prompt');
-    return;
+
+  async function handleGenerativeFill() {
+    if (!imageUrl || !maskFile || !editPrompt) {
+      setError('Sono necessari l\'immagine, la maschera e il prompt');
+      return;
+    }
+
+    console.log("Sending mask file:", maskFile);
+    console.log("Mask file type:", maskFile.type);
+    console.log("Mask file size:", maskFile.size);
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('imageUrl', imageUrl);
+      formData.append('mask', maskFile);
+      formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
+
+      const res = await fetch('/api/edit', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      console.log('Edit API Response:', data);
+      
+      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
+      
+      if (!data || !data.data || !data.data[0] || !data.data[0].url) {
+        throw new Error('Risposta API non valida: formato inatteso');
+      }
+      
+      setImageUrl(data.data[0].url);
+      setIsEditMode(false);
+      clearMask();
+      setEditPrompt('');
+    } catch (err) {
+      console.error('Error details:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  setLoading(true);
-  setError(null);
-
-  try {
-    const formData = new FormData();
-    formData.append('imageUrl', imageUrl);
-    formData.append('mask', maskFile);
-    formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
-
-    // Verifichiamo il contenuto del FormData
-    console.log('Mask file:', maskFile);
-    console.log('Mask file type:', maskFile.type);
-    console.log('Mask file size:', maskFile.size);
-
-    const res = await fetch('/api/edit', {
-      method: 'POST',
-      body: formData
-    });
-    // ... resto del codice
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
   return (
