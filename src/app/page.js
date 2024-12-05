@@ -359,29 +359,6 @@ export default function Home() {
                       onClick={() => setIsOpenPalette(!isOpenPalette)}
                       className="w-full p-2 bg-black border border-white rounded-lg text-white cursor-pointer hover:bg-white/5 transition-all duration-300 flex items-center gap-2"
                     >
-                      <div className="flex gap-1">
-                        {selectedPalette.colors.map((color, index) => (
-                          <span 
-                            key={index} 
-                            className="inline-block w-3 h-3 rounded-sm"
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
-                      </div>
-                      <span>{selectedPalette.name}</span>
-                    </div>
-                    
-                    {isOpenPalette && (
-                      <div className="absolute z-50 w-full mt-1 bg-black border border-white rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {Object.entries(colorPalettes).map(([value, palette]) => (
-                          <div
-                            key={value}
-                            onClick={() => {
-                              setColorPalette(value);
-                              setIsOpenPalette(false);
-                            }}
-                            className="p-2 hover:bg-white/5 cursor-pointer flex items-center gap-2"
-                          >
                             <div className="flex gap-1">
                               {palette.colors.map((color, index) => (
                                 <span 
@@ -441,47 +418,38 @@ export default function Home() {
           </div>
         )}
 
-  <main className="min-h-screen bg-black text-white p-8">
-        <div className="max-w-xl mx-auto">
-          <h1>...</h1>
-          <form>...</form>
-          
-          {error && (
-            <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
-              {error}
+        {imageUrl && (
+          <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch(imageUrl);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+                    const objectUrl = URL.createObjectURL(file);
+                    setImageFile(file);
+                    setPreviewUrl(objectUrl);
+                    setIsEditMode(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  } catch (err) {
+                    setError('Errore nel caricamento dell\'immagine per l\'editing');
+                    console.error(err);
+                  }
+                }}
+                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+              >
+                Edit Immagine
+              </button>
             </div>
-          )}
-
-          {imageUrl && (
-            <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
-              <div className="flex justify-end mb-4">
-                <button
-                  onClick={async () => {
-                    try {
-                      const response = await fetch(imageUrl);
-                      const blob = await response.blob();
-                      const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
-                      const objectUrl = URL.createObjectURL(file);
-                      setImageFile(file);
-                      setPreviewUrl(objectUrl);
-                      setIsEditMode(true);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    } catch (err) {
-                      setError('Errore nel caricamento dell\'immagine per l\'editing');
-                      console.error(err);
-                    }
-                  }}
-                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-                >
-                  Edit Immagine
-                </button>
-              </div>
-              <img 
-                src={imageUrl} 
-                alt="Immagine generata"
-                className="w-full rounded-lg" 
-              />
-            </div>
-          )}
-        </div>
-      </main>
+            <img 
+              src={imageUrl} 
+              alt="Immagine generata"
+              className="w-full rounded-lg" 
+            />
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
