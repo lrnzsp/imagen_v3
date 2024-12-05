@@ -17,6 +17,8 @@ export default function Home() {
   const [isOpenPalette, setIsOpenPalette] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [maskFile, setMaskFile] = useState(null);
+  const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Quadrato',
@@ -144,105 +146,78 @@ export default function Home() {
   }
 
   async function handleCanvasToMask() {
-  const canvas = document.getElementById('maskCanvas');
-  const tempCanvas = document.createElement('canvas');
-  
-  // Get original image dimensions
-  const img = new Image();
-  await new Promise((resolve) => {
-    img.onload = resolve;
-    img.src = imageUrl;
-  });
-  
-  // Set canvas dimensions
-  tempCanvas.width = img.naturalWidth;
-  tempCanvas.height = img.naturalHeight;
-  
-  // Create white background (inverted from before)
-  const tempCtx = tempCanvas.getContext('2d');
-  tempCtx.fillStyle = 'white';
-  tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-  
-  // Copy black mask (inverted from before)
-  tempCtx.globalCompositeOperation = 'source-over';
-  tempCtx.fillStyle = 'black';
-  tempCtx.strokeStyle = 'black';
-  tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-  
-  const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-  const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
-  return maskFile;
-}
-  
-
-async function handleGenerativeFill() {
-  if (!imageUrl || !editPrompt) {
-    setError('Both image and prompt are required');
-    return;
-  }
-
-  setLoading(true);
-  setError(null);
-
-  try {
-    const maskFile = await handleCanvasToMask();
-    console.log("Sending mask file:", maskFile);
-    console.log("Mask file type:", maskFile.type);
-    console.log("Mask file size:", maskFile.size);
-
-    const formData = new FormData();
-    formData.append('imageUrl', imageUrl);
-    formData.append('mask', maskFile);
-    formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
-
-    const res = await fetch('/api/edit', {
-      method: 'POST',
-      body: formData
+    const canvas = document.getElementById('maskCanvas');
+    // Creiamo un nuovo canvas temporaneo con le dimensioni corrette
+    const tempCanvas = document.createElement('canvas');
+    
+    // Get the original image dimensions
+    const img = new Image();
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.src = imageUrl;
     });
-
-    const data = await res.json();
-    console.log('Edit API Response:', data);
     
-    if (!res.ok) {
-      if (data.errors) {
-        throw new Error(data.errors[0] || 'Error during processing');
-      }
-      throw new Error(data.error || 'Error during processing');
-    }
+    // Set the canvas to the exact dimensions of the original image
+    tempCanvas.width = img.naturalWidth;
+    tempCanvas.height = img.naturalHeight;
     
-    if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-      throw new Error('Invalid API response: unexpected format');
-    }
+    // Copy and scale the content from our drawing canvas
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     
-    // Save old URL for history
-    const oldImageUrl = imageUrl;
-    
-    // Set new URL
-    setImageUrl(data.data[0].url);
-    
-    // Reset edit mode
-    setIsEditMode(false);
-    setEditPrompt('');
-
-    // Add to history and scroll to new image
-    setTimeout(() => {
-      window.scrollTo({ 
-        top: document.documentElement.scrollHeight,
-        behavior: 'smooth'
-      });
-    }, 100);
-
-  } catch (err) {
-    console.error('Error details:', err);
-    setError(err.message);
-  } finally {
-    setLoading(false);
+    const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+    return maskFile;
   }
-}
+
+  async function handleGenerativeFill() {
+    if (!imageUrl || !editPrompt) {
+      setError('Sono necessari l\'immagine e il prompt');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const maskFile = await handleCanvasToMask();
+      console.log("Sending mask file:", maskFile);
+      console.log("Mask file type:", maskFile.type);
+      console.log("Mask file size:", maskFile.size);
+
+      const formData = new FormData();
+      formData.append('imageUrl', imageUrl);
+      formData.append('mask', maskFile);
+      formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
+
+      const res = await fetch('/api/edit', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      console.log('Edit API Response:', data);
+      
+      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
+      
+      if (!data || !data.data || !data.data[0] || !data.data[0].url) {
+        throw new Error('Risposta API non valida: formato inatteso');
+      }
+      
+      setImageUrl(data.data[0].url);
+      setIsEditMode(false);
+      setEditPrompt('');
+    } catch (err) {
+      console.error('Error details:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-return (
+  return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
         <h1 className="text-4xl font-bold mb-12 text-center title-font">
@@ -316,9 +291,7 @@ return (
                     className="w-full p-2 bg-black border border-white rounded-lg text-white focus:ring-2 focus:ring-white transition-all duration-300"
                   >
                     {Object.entries(aspectRatioOptions).map(([value, label]) => (
-                      <option key={value} value={value} className="bg-black">
-                        {label}
-                      </option>
+                      <option key={value} value={value} className="bg-black">{label}</option>
                     ))}
                   </select>
                 </div>
@@ -338,9 +311,7 @@ return (
                       className="w-full p-2 bg-black border border-white rounded-lg text-white focus:ring-2 focus:ring-white transition-all duration-300"
                     >
                       {Object.entries(aspectRatioOptions).map(([value, label]) => (
-                        <option key={value} value={value} className="bg-black">
-                          {label}
-                        </option>
+                        <option key={value} value={value} className="bg-black">{label}</option>
                       ))}
                     </select>
                   </div>
@@ -440,6 +411,7 @@ return (
                   alt="Immagine da modificare"
                   className="w-full rounded-lg"
                   onLoad={(e) => {
+                    // Otteniamo le dimensioni reali dell'immagine
                     const img = e.target;
                     const tempImg = new Image();
                     tempImg.onload = () => {
@@ -448,10 +420,13 @@ return (
                       canvas.height = tempImg.naturalHeight;
                       canvas.style.width = '100%';
                       canvas.style.height = '100%';
+                      canvas.style.position = 'absolute';
+                      canvas.style.left = '0';
+                      canvas.style.top = '0';
 
                       const ctx = canvas.getContext('2d');
-                      ctx.fillStyle = 'white';
-                      ctx.strokeStyle = 'white';
+                      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
                       ctx.lineWidth = 20;
                       ctx.lineCap = 'round';
 
