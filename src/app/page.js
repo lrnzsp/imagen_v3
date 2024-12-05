@@ -82,18 +82,6 @@ export default function Home() {
     }
   }
 
-  function handleMaskUpload(e) {
-    const file = e.target.files[0];
-    if (file) {
-      console.log("Mask file selected:", file);
-      console.log("Mask file type:", file.type);
-      console.log("Mask file size:", file.size);
-      setMaskFile(file);
-      const objectUrl = URL.createObjectURL(file);
-      setMaskPreviewUrl(objectUrl);
-    }
-  }
-
   function clearImage() {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -101,15 +89,6 @@ export default function Home() {
     setImageFile(null);
     setPreviewUrl(null);
     setIsEditMode(false);
-    clearMask();
-  }
-
-  function clearMask() {
-    if (maskPreviewUrl) {
-      URL.revokeObjectURL(maskPreviewUrl);
-    }
-    setMaskFile(null);
-    setMaskPreviewUrl(null);
   }
 
   async function handleSubmit(e) {
@@ -166,20 +145,46 @@ export default function Home() {
     }
   }
 
+  async function handleCanvasToMask() {
+    const canvas = document.getElementById('maskCanvas');
+    // Creiamo un nuovo canvas temporaneo con le dimensioni corrette
+    const tempCanvas = document.createElement('canvas');
+    
+    // Get the original image dimensions
+    const img = new Image();
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.src = imageUrl;
+    });
+    
+    // Set the canvas to the exact dimensions of the original image
+    tempCanvas.width = img.naturalWidth;
+    tempCanvas.height = img.naturalHeight;
+    
+    // Copy and scale the content from our drawing canvas
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+    
+    const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+    return maskFile;
+  }
+
   async function handleGenerativeFill() {
-    if (!imageUrl || !maskFile || !editPrompt) {
-      setError('Sono necessari l\'immagine, la maschera e il prompt');
+    if (!imageUrl || !editPrompt) {
+      setError('Sono necessari l\'immagine e il prompt');
       return;
     }
-
-    console.log("Sending mask file:", maskFile);
-    console.log("Mask file type:", maskFile.type);
-    console.log("Mask file size:", maskFile.size);
 
     setLoading(true);
     setError(null);
 
     try {
+      const maskFile = await handleCanvasToMask();
+      console.log("Sending mask file:", maskFile);
+      console.log("Mask file type:", maskFile.type);
+      console.log("Mask file size:", maskFile.size);
+
       const formData = new FormData();
       formData.append('imageUrl', imageUrl);
       formData.append('mask', maskFile);
@@ -201,7 +206,6 @@ export default function Home() {
       
       setImageUrl(data.data[0].url);
       setIsEditMode(false);
-      clearMask();
       setEditPrompt('');
     } catch (err) {
       console.error('Error details:', err);
@@ -211,14 +215,8 @@ export default function Home() {
     }
   }
 
-  async function handleCanvasToMask() {
-    const canvas = document.getElementById('maskCanvas');
-    const maskBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
-    return maskFile;
-  }
-
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
+
   return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
@@ -408,69 +406,71 @@ export default function Home() {
               <h2 className="text-xl font-bold">Modalità Editing</h2>
               
               <div className="mt-4 relative">
+                <img
+                  src={imageUrl}
+                  alt="Immagine da modificare"
+                  className="w-full rounded-lg"
+                  onLoad={(e) => {
+                    // Otteniamo le dimensioni reali dell'immagine
+                    const img = e.target;
+                    const tempImg = new Image();
+                    tempImg.onload = () => {
+                      const canvas = document.getElementById('maskCanvas');
+                      canvas.width = tempImg.naturalWidth;
+                      canvas.height = tempImg.naturalHeight;
+                      canvas.style.width = '100%';
+                      canvas.style.height = '100%';
+                      canvas.style.position = 'absolute';
+                      canvas.style.left = '0';
+                      canvas.style.top = '0';
+
+                      const ctx = canvas.getContext('2d');
+                      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                      ctx.lineWidth = 20;
+                      ctx.lineCap = 'round';
+
+                      let isDrawing = false;
+                      let lastX = 0;
+                      let lastY = 0;
+
+                      const getCoordinates = (e) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const scaleX = canvas.width / rect.width;
+                        const scaleY = canvas.height / rect.height;
+                        return [
+                          (e.clientX - rect.left) * scaleX,
+                          (e.clientY - rect.top) * scaleY
+                        ];
+                      };
+
+                      canvas.onmousedown = (e) => {
+                        isDrawing = true;
+                        [lastX, lastY] = getCoordinates(e);
+                      };
+
+                      canvas.onmousemove = (e) => {
+                        if (!isDrawing) return;
+                        const [currentX, currentY] = getCoordinates(e);
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(currentX, currentY);
+                        ctx.stroke();
+                        [lastX, lastY] = [currentX, currentY];
+                      };
+
+                      canvas.onmouseup = () => isDrawing = false;
+                      canvas.onmouseleave = () => isDrawing = false;
+                    };
+                    tempImg.src = imageUrl;
+                  }}
+                />
                 <canvas
                   id="maskCanvas"
                   className="absolute top-0 left-0 cursor-crosshair z-10"
                   style={{ 
                     backgroundColor: 'transparent',
                     touchAction: 'none'
-                  }}
-                />
-                <img
-                  src={imageUrl}
-                  alt="Immagine da modificare"
-                  className="w-full rounded-lg"
-                  onLoad={(e) => {
-                    const canvas = document.getElementById('maskCanvas');
-                    const img = e.target;
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    canvas.style.width = img.width + 'px';
-                    canvas.style.height = img.height + 'px';
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                    ctx.lineWidth = 20;
-                    ctx.lineCap = 'round';
-
-                    let isDrawing = false;
-                    let lastX = 0;
-                    let lastY = 0;
-
-                    const getCoordinates = (e) => {
-                      const rect = canvas.getBoundingClientRect();
-                      const scaleX = canvas.width / rect.width;
-                      const scaleY = canvas.height / rect.height;
-                      return [
-                        (e.clientX - rect.left) * scaleX,
-                        (e.clientY - rect.top) * scaleY
-                      ];
-                    };
-
-                    const startDrawing = (e) => {
-                      isDrawing = true;
-                      [lastX, lastY] = getCoordinates(e);
-                    };
-
-                    const draw = (e) => {
-                      if (!isDrawing) return;
-                      const [currentX, currentY] = getCoordinates(e);
-                      ctx.beginPath();
-                      ctx.moveTo(lastX, lastY);
-                      ctx.lineTo(currentX, currentY);
-                      ctx.stroke();
-                      [lastX, lastY] = [currentX, currentY];
-                    };
-
-                    const stopDrawing = () => {
-                      isDrawing = false;
-                    };
-
-                    canvas.addEventListener('mousedown', startDrawing);
-                    canvas.addEventListener('mousemove', draw);
-                    canvas.addEventListener('mouseup', stopDrawing);
-                    canvas.addEventListener('mouseleave', stopDrawing);
                   }}
                 />
               </div>
@@ -516,11 +516,7 @@ export default function Home() {
 
               <div className="flex gap-2">
                 <button
-                  onClick={async () => {
-                    const maskFile = await handleCanvasToMask();
-                    setMaskFile(maskFile);
-                    handleGenerativeFill();
-                  }}
+                  onClick={handleGenerativeFill}
                   disabled={loading || !editPrompt}
                   className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
                            disabled:opacity-50 disabled:cursor-not-allowed
