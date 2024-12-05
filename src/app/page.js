@@ -33,7 +33,7 @@ export default function Home() {
     'ASPECT_1_3': '1:3 Banner Verticale',
     'ASPECT_3_1': '3:1 Banner Orizzontale'
   };
-
+ 
   const colorPalettes = {
     '': { 
       name: 'Nessuna palette', 
