@@ -171,50 +171,45 @@ export default function Home() {
       setLoading(false);
     }
   }
-
 async function handleGenerativeFill() {
-    if (!imageUrl || !maskFile || !editPrompt) {
-      setError('Sono necessari l\'immagine, la maschera e il prompt');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const imageFile = new File([blob], 'image.jpg', { type: 'image/jpeg' });
-
-      const formData = new FormData();
-      formData.append('image_file', imageFile);
-      formData.append('mask', maskFile);
-      formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
-
-      const res = await fetch('/api/edit', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
-      
-      if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error('Risposta API non valida: formato inatteso');
-      }
-      
-      setImageUrl(data.data[0].url);
-      setIsEditMode(false);
-      clearMask();
-      setEditPrompt('');
-    } catch (err) {
-      console.error('Error details:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  if (!imageUrl || !maskFile || !editPrompt) {
+    setError('Sono necessari l\'immagine, la maschera e il prompt');
+    return;
   }
+
+  setLoading(true);
+  setError(null);
+
+  try {
+    const formData = new FormData();
+    formData.append('imageUrl', imageUrl); // Inviamo solo l'URL
+    formData.append('mask', maskFile);
+    formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
+
+    const res = await fetch('/api/edit', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    
+    if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
+    
+    if (!data || !data.data || !data.data[0] || !data.data[0].url) {
+      throw new Error('Risposta API non valida: formato inatteso');
+    }
+    
+    setImageUrl(data.data[0].url);
+    setIsEditMode(false);
+    clearMask();
+    setEditPrompt('');
+  } catch (err) {
+    console.error('Error details:', err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
