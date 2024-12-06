@@ -5,16 +5,11 @@ export const runtime = 'edge';
 export async function POST(req) {
   try {
     const formData = await req.formData();
+    const imageFile = formData.get('image_file');
     const maskFile = formData.get('mask');
-    const imageUrl = formData.get('imageUrl');
     const prompt = formData.get('prompt');
 
-    // Download immagine
-    const imageRes = await fetch(imageUrl);
-    const imageBlob = await imageRes.blob();
-    const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' });
-
-    // Prepara formData per Ideogram esattamente come nella documentazione
+    // Prepara formData per Ideogram
     const form = new FormData();
     form.append('image_file', imageFile);
     form.append('mask', maskFile);
