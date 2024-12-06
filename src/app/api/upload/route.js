@@ -7,7 +7,7 @@ export async function POST(req) {
     const formData = await req.formData();
     const imageFile = formData.get('image_file');
 
-    // Invia l'immagine a Ideogram o a un altro servizio di storage
+    // Invia l'immagine a Ideogram
     const uploadFormData = new FormData();
     uploadFormData.append('image_file', imageFile);
 
@@ -20,9 +20,16 @@ export async function POST(req) {
     });
 
     const data = await response.json();
-    return NextResponse.json(data);
+    
+    // Formatta la risposta nello stesso formato delle altre API
+    return NextResponse.json({
+      data: [{
+        url: data.url // Assumendo che Ideogram restituisca l'URL in data.url
+      }]
+    });
+
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+} 
