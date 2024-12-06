@@ -9,11 +9,25 @@ export async function POST(req) {
     const imageUrl = formData.get('imageUrl');
     const prompt = formData.get('prompt');
 
-    // Download image and ensure it's in JPEG format
+    // Download image and log its content type
     const imageRes = await fetch(imageUrl);
+    console.log('Original image content type:', imageRes.headers.get('content-type'));
+    
     const imageBlob = await imageRes.blob();
-    const imageFile = new File([imageBlob], 'image.jpeg', { 
-      type: 'image/jpeg',
+    console.log('Image blob type:', imageBlob.type);
+
+    // Ensure we're dealing with a supported image type
+    const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const imageType = imageBlob.type || 'image/jpeg';
+    
+    if (!supportedTypes.includes(imageType)) {
+      return NextResponse.json({ 
+        error: `Unsupported image type: ${imageType}. Must be one of: ${supportedTypes.join(', ')}` 
+      }, { status: 400 });
+    }
+
+    const imageFile = new File([imageBlob], `image.${imageType.split('/')[1]}`, { 
+      type: imageType,
       lastModified: new Date().getTime()
     });
 
@@ -40,8 +54,11 @@ export async function POST(req) {
     console.log('Sending to Ideogram:', {
       hasImageFile: !!form.get('image_file'),
       imageFileType: imageFile.type,
+      imageFileName: imageFile.name,
+      imageFileSize: imageFile.size,
       hasMask: !!form.get('mask'),
       maskFileType: invertedMaskFile.type,
+      maskFileSize: invertedMaskFile.size,
       prompt: prompt
     });
 
