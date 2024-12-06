@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const FIXED_PREFIX = "a fashion photograph of";
 
@@ -21,8 +21,11 @@ export default function Home() {
   const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
   const [previousImageUrl, setPreviousImageUrl] = useState(null);
   const [nextImageUrl, setNextImageUrl] = useState(null);
-  const [canvasStates, setCanvasStates] = useState([]);
-  const [currentStateIndex, setCurrentStateIndex] = useState(-1);
+  const [maskHistory, setMaskHistory] = useState([]);
+  const [currentMaskIndex, setCurrentMaskIndex] = useState(-1);
+  const canvasRef = useRef(null);
+  const isDrawing = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Square',
@@ -226,45 +229,46 @@ export default function Home() {
     }
   }
 
-  function saveCanvasState() {
-    const canvas = document.getElementById('maskCanvas');
-    const state = canvas.toDataURL();
-    
-    // Rimuovi gli stati futuri se stiamo disegnando dopo un undo
-    const newStates = canvasStates.slice(0, currentStateIndex + 1);
-    setCanvasStates([...newStates, state]);
-    setCurrentStateIndex(currentStateIndex + 1);
-  }
-
-  function handleUndo() {
-    if (currentStateIndex > 0) {
-      const canvas = document.getElementById('maskCanvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-      };
-      img.src = canvasStates[currentStateIndex - 1];
-      setCurrentStateIndex(currentStateIndex - 1);
-    }
-  }
-
-  function handleRedo() {
-    if (currentStateIndex < canvasStates.length - 1) {
-      const canvas = document.getElementById('maskCanvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-      };
-      img.src = canvasStates[currentStateIndex + 1];
-      setCurrentStateIndex(currentStateIndex + 1);
-    }
-  }
-
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
+
+  const saveMaskState = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const newState = canvas.toDataURL();
+    const newHistory = maskHistory.slice(0, currentMaskIndex + 1);
+    newHistory.push(newState);
+    setMaskHistory(newHistory);
+    setCurrentMaskIndex(newHistory.length - 1);
+  };
+
+  const undoMask = () => {
+    if (currentMaskIndex <= 0) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = maskHistory[currentMaskIndex - 1];
+    setCurrentMaskIndex(currentMaskIndex - 1);
+  };
+
+  const redoMask = () => {
+    if (currentMaskIndex >= maskHistory.length - 1) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = maskHistory[currentMaskIndex + 1];
+    setCurrentMaskIndex(currentMaskIndex + 1);
+  };
 
   return (
     <main className="min-h-screen bg-black text-white p-8">
@@ -507,60 +511,43 @@ export default function Home() {
                         [lastX, lastY] = [currentX, currentY];
                       };
 
-                      canvas.onmouseup = () => {
-                        if (isDrawing) {  // Solo se stavamo effettivamente disegnando
-                          isDrawing = false;
-                          saveCanvasState();  // Salva lo stato dopo ogni pennellata completata
-                        }
-                      };
-
-                      canvas.onmouseleave = () => {
-                        if (isDrawing) {  // Se usciamo mentre stavamo disegnando
-                          isDrawing = false;
-                          saveCanvasState();  // Salva lo stato anche in questo caso
-                        }
-                      };
-
-                      // Salva lo stato iniziale del canvas vuoto
-                      const initialState = canvas.toDataURL();
-                      setCanvasStates([initialState]);
-                      setCurrentStateIndex(0);
+                      canvas.onmouseup = () => isDrawing = false;
+                      canvas.onmouseleave = () => isDrawing = false;
                     };
                     tempImg.src = imageUrl;
                   }}
                 />
                 <canvas
-                  id="maskCanvas"
+                  ref={canvasRef}
                   className="absolute top-0 left-0 cursor-crosshair z-10"
                   style={{ 
                     backgroundColor: 'transparent',
                     touchAction: 'none'
                   }}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
                 />
               </div>
 
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => {
-                    const canvas = document.getElementById('maskCanvas');
-                    const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    saveCanvasState();
-                  }}
+                  onClick={clearCanvas}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
                   Clear Mask
                 </button>
                 <button
-                  onClick={handleUndo}
-                  disabled={currentStateIndex <= 0}
+                  onClick={undoMask}
+                  disabled={currentMaskIndex <= 0}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Undo
                 </button>
                 <button
-                  onClick={handleRedo}
-                  disabled={currentStateIndex >= canvasStates.length - 1}
+                  onClick={redoMask}
+                  disabled={currentMaskIndex >= maskHistory.length - 1}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Redo
