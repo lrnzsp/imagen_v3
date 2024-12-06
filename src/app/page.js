@@ -644,7 +644,12 @@ export default function Home() {
             </div>
             <img 
               src={imageUrl} 
-              alt="Immagine generata"
+              alt="Generated image"
               className="w-full rounded-lg" 
             />
- 
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
