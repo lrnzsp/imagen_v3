@@ -233,7 +233,7 @@ export default function Home() {
     // Rimuovi gli stati futuri se stiamo disegnando dopo un undo
     const newStates = canvasStates.slice(0, currentStateIndex + 1);
     setCanvasStates([...newStates, state]);
-    setCurrentStateIndex(newStates.length);
+    setCurrentStateIndex(currentStateIndex + 1);
   }
 
   function handleUndo() {
@@ -477,6 +477,11 @@ export default function Home() {
                       ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
                       ctx.lineWidth = 70;
                       ctx.lineCap = 'round';
+
+                      // Salva lo stato iniziale del canvas (vuoto)
+                      const initialState = canvas.toDataURL();
+                      setCanvasStates([initialState]);
+                      setCurrentStateIndex(0);
 
                       let isDrawing = false;
                       let lastX = 0;
