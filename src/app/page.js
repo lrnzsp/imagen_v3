@@ -226,14 +226,34 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  function handleEditImageUpload(e) {
+  async function handleEditImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      // Crea un URL per l'immagine caricata
-      const objectUrl = URL.createObjectURL(file);
-      // Imposta l'URL dell'immagine e attiva la modalità edit
-      setImageUrl(objectUrl);
-      setIsEditMode(true);
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Prima carichiamo l'immagine
+        const uploadFormData = new FormData();
+        uploadFormData.append('image_file', file);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Error uploading image');
+
+        // Usa l'URL restituito da Ideogram
+        setImageUrl(uploadData.url);
+        setIsEditMode(true);
+      } catch (err) {
+        console.error('Error uploading:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
