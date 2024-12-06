@@ -76,12 +76,81 @@ export default function Home() {
     }
   };
 
-  function handleFileChange(e) {
+  async function resizeImageIfNeeded(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Failed to load image'));
+      };
+      
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        
+        if (img.width <= 1024 && img.height <= 1024) {
+          resolve(file);
+          return;
+        }
+        
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          let newWidth = img.width;
+          let newHeight = img.height;
+          
+          if (newWidth > newHeight) {
+            if (newWidth > 1024) {
+              newHeight = Math.round((newHeight * 1024) / newWidth);
+              newWidth = 1024;
+            }
+          } else {
+            if (newHeight > 1024) {
+              newWidth = Math.round((newWidth * 1024) / newHeight);
+              newHeight = 1024;
+            }
+          }
+          
+          canvas.width = newWidth;
+          canvas.height = newHeight;
+          
+          ctx.drawImage(img, 0, 0, newWidth, newHeight);
+          
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error('Failed to create blob'));
+              return;
+            }
+            
+            const resizedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(resizedFile);
+          }, 'image/jpeg', 0.9);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      img.src = objectUrl;
+    });
+  }
+
+  async function handleFileChange(e) {
     const file = e.target.files[0];
     if (file) {
-      setImageFile(file);
-      const objectUrl = URL.createObjectURL(file);
-      setPreviewUrl(objectUrl);
+      try {
+        const resizedFile = await resizeImageIfNeeded(file);
+        setImageFile(resizedFile);
+        const objectUrl = URL.createObjectURL(resizedFile);
+        setPreviewUrl(objectUrl);
+      } catch (error) {
+        console.error('Error resizing image:', error);
+        setError('Failed to process image. Please try a different image.');
+      }
     }
   }
 
@@ -152,25 +221,20 @@ export default function Home() {
     const canvas = document.getElementById('maskCanvas');
     const tempCanvas = document.createElement('canvas');
     
-    // Get the original image dimensions
     const img = new Image();
     await new Promise((resolve) => {
         img.onload = resolve;
         img.src = imageUrl;
     });
     
-    // Set the canvas to the exact dimensions of the original image
     tempCanvas.width = img.naturalWidth;
     tempCanvas.height = img.naturalHeight;
     
-    // Copy and scale the content from our drawing canvas
     const tempCtx = tempCanvas.getContext('2d');
     
-    // Riempi prima tutto di bianco (area da preservare)
     tempCtx.fillStyle = 'white';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
-    // Disegna il contenuto del canvas originale in nero
     tempCtx.globalCompositeOperation = 'difference';
     tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     
@@ -227,13 +291,19 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  function handleEditImageUpload(e) {
+  async function handleEditImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setImageUrl(objectUrl);
-      setEditImageFile(file);
-      setIsEditMode(true);
+      try {
+        const resizedFile = await resizeImageIfNeeded(file);
+        const objectUrl = URL.createObjectURL(resizedFile);
+        setImageUrl(objectUrl);
+        setEditImageFile(resizedFile);
+        setIsEditMode(true);
+      } catch (error) {
+        console.error('Error resizing image:', error);
+        setError('Failed to process image. Please try a different image.');
+      }
     }
   }
 
@@ -551,15 +621,25 @@ export default function Home() {
               </div>
 
               <div className="flex gap-2">
-                <button
-                  onClick={handleGenerativeFill}
-                  disabled={loading || !editPrompt}
-                  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
-                           disabled:opacity-50 disabled:cursor-not-allowed
-                           hover:bg-gray-200 transition-all duration-300"
-                >
-                  {loading ? 'Processing...' : 'Generative Fill'}
-                </button>
+         <button
+  onClick={handleGenerativeFill}
+  disabled={loading || !editPrompt}
+  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
+           disabled:opacity-50 disabled:cursor-not-allowed
+           hover:bg-gray-200 transition-all duration-300"
+>
+  {loading ? (
+    <span className="flex items-center justify-center">
+      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Processing...
+    </span>
+  ) : (
+    'Generative Fill'
+  )}
+</button>
                 <button
                   onClick={() => {
                     setIsEditMode(false);
