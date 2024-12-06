@@ -230,33 +230,30 @@ export default function Home() {
     const file = e.target.files[0];
     if (file) {
       try {
-        // Crea un URL temporaneo per la preview
-        const objectUrl = URL.createObjectURL(file);
-        
-        // Carica l'immagine su Ideogram
+        // Crea un FormData con l'immagine
         const formData = new FormData();
+        formData.append('imageUrl', URL.createObjectURL(file));
         formData.append('image_file', file);
-        
-        const res = await fetch('/api/upload', {
+
+        // Invia l'immagine all'API di edit
+        const res = await fetch('/api/edit', {
           method: 'POST',
           body: formData
         });
-        
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error uploading image');
-        
-        // Usa l'URL restituito dall'API per l'editing
-        if (data && data.data && data.data[0] && data.data[0].url) {
-          setImageUrl(data.data[0].url);
-          setIsEditMode(true);
-        } else {
-          throw new Error('Invalid API response format');
-        }
 
-        // Pulisci l'URL temporaneo
-        URL.revokeObjectURL(objectUrl);
+        const data = await res.json();
+        console.log('Edit API Response:', data);
+        
+        if (!res.ok) throw new Error(data.error || 'Error during processing');
+        
+        if (!data || !data.data || !data.data[0] || !data.data[0].url) {
+          throw new Error('Invalid API response: unexpected format');
+        }
+        
+        setImageUrl(data.data[0].url);
+        setIsEditMode(true);
       } catch (err) {
-        console.error('Error uploading image:', err);
+        console.error('Error details:', err);
         setError(err.message);
       }
     }
