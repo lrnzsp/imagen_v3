@@ -168,8 +168,7 @@ export default function Home() {
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
     // Disegna il contenuto del canvas originale in nero
-    tempCtx.globalCompositeOperation = 'source-in';
-    tempCtx.fillStyle = 'black';
+    tempCtx.globalCompositeOperation = 'difference';
     tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     
     const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
