@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
+async function convertToJpeg(blob) {
+  // Create ImageData from blob
+  const arrayBuffer = await blob.arrayBuffer();
+  const response = await fetch('data:' + blob.type + ';base64,' + Buffer.from(arrayBuffer).toString('base64'));
+  const imageData = await response.blob();
+  
+  // Convert to JPEG
+  const jpegBlob = new Blob([imageData], { type: 'image/jpeg' });
+  return new File([jpegBlob], 'image.jpeg', {
+    type: 'image/jpeg',
+    lastModified: new Date().getTime()
+  });
+}
+
 export async function POST(req) {
   try {
     const formData = await req.formData();
@@ -9,29 +23,16 @@ export async function POST(req) {
     const imageUrl = formData.get('imageUrl');
     const prompt = formData.get('prompt');
 
-    // Download image and log its content type
+    // Download image
     const imageRes = await fetch(imageUrl);
-    console.log('Original image content type:', imageRes.headers.get('content-type'));
-    
     const imageBlob = await imageRes.blob();
-    console.log('Image blob type:', imageBlob.type);
+    console.log('Original image type:', imageBlob.type);
 
-    // Ensure we're dealing with a supported image type
-    const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const imageType = imageBlob.type || 'image/jpeg';
-    
-    if (!supportedTypes.includes(imageType)) {
-      return NextResponse.json({ 
-        error: `Unsupported image type: ${imageType}. Must be one of: ${supportedTypes.join(', ')}` 
-      }, { status: 400 });
-    }
+    // Convert image to JPEG
+    const imageFile = await convertToJpeg(imageBlob);
+    console.log('Converted image type:', imageFile.type);
 
-    const imageFile = new File([imageBlob], `image.${imageType.split('/')[1]}`, { 
-      type: imageType,
-      lastModified: new Date().getTime()
-    });
-
-    // Inverti la maschera
+    // Handle mask
     const maskBlob = await maskFile.arrayBuffer();
     const maskUint8 = new Uint8Array(maskBlob);
     for (let i = 0; i < maskUint8.length; i++) {
@@ -43,7 +44,7 @@ export async function POST(req) {
       lastModified: new Date().getTime()
     });
 
-    // Prepara formData per Ideogram
+    // Prepare FormData
     const form = new FormData();
     form.append('image_file', imageFile);
     form.append('mask', invertedMaskFile);
@@ -51,6 +52,7 @@ export async function POST(req) {
     form.append('model', 'V_2');
     form.append('style_type', 'REALISTIC');
 
+    // Enhanced logging
     console.log('Sending to Ideogram:', {
       hasImageFile: !!form.get('image_file'),
       imageFileType: imageFile.type,
