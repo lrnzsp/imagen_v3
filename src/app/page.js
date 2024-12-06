@@ -226,36 +226,12 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  async function handleEditImageUpload(e) {
+  function handleEditImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      try {
-        // Crea un FormData con l'immagine
-        const formData = new FormData();
-        formData.append('imageUrl', URL.createObjectURL(file));
-        formData.append('image_file', file);
-
-        // Invia l'immagine all'API di edit
-        const res = await fetch('/api/edit', {
-          method: 'POST',
-          body: formData
-        });
-
-        const data = await res.json();
-        console.log('Edit API Response:', data);
-        
-        if (!res.ok) throw new Error(data.error || 'Error during processing');
-        
-        if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-          throw new Error('Invalid API response: unexpected format');
-        }
-        
-        setImageUrl(data.data[0].url);
-        setIsEditMode(true);
-      } catch (err) {
-        console.error('Error details:', err);
-        setError(err.message);
-      }
+      const objectUrl = URL.createObjectURL(file);
+      setImageUrl(objectUrl);
+      setIsEditMode(true);
     }
   }
 
@@ -641,7 +617,7 @@ export default function Home() {
             </div>
             <img 
               src={imageUrl} 
-              alt="Generated image"
+              alt="Immagine generata"
               className="w-full rounded-lg" 
             />
           </div>
