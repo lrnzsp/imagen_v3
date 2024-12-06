@@ -659,10 +659,8 @@ export default function Home() {
             <div className="flex justify-end mb-4 gap-2">
               
                 href={imageUrl}
-                download="generated-image.jpg"
+                download
                 className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 Download
               </a>
@@ -711,4 +709,3 @@ export default function Home() {
     </main>
   );
 }
-                  
