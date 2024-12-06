@@ -7,29 +7,18 @@ export async function POST(req) {
     const formData = await req.formData();
     const maskFile = formData.get('mask');
     const imageUrl = formData.get('imageUrl');
-    const imageFile = formData.get('image_file');
     const prompt = formData.get('prompt');
 
-    // Se abbiamo un imageFile, lo usiamo direttamente
-    let finalImageFile;
-    if (imageFile) {
-      finalImageFile = imageFile;
-    } else {
-      // Altrimenti scarica l'immagine dall'URL come prima
-      const imageRes = await fetch(imageUrl);
-      const imageBlob = await imageRes.blob();
-      finalImageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' });
-    }
+    // Download immagine
+    const imageRes = await fetch(imageUrl);
+    const imageBlob = await imageRes.blob();
+    const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' });
 
-    // Prepara formData per Ideogram
+    // Prepara formData per Ideogram esattamente come nella documentazione
     const form = new FormData();
-    form.append('image_file', finalImageFile);
-    if (maskFile) {
-      form.append('mask', maskFile);
-    }
-    if (prompt) {
-      form.append('prompt', prompt);
-    }
+    form.append('image_file', imageFile);
+    form.append('mask', maskFile);
+    form.append('prompt', prompt);
     form.append('model', 'V_2');
     form.append('style_type', 'REALISTIC');
 
@@ -42,7 +31,7 @@ export async function POST(req) {
     const response = await fetch('https://api.ideogram.ai/edit', {
       method: 'POST',
       headers: {
-        'Api-Key': process.env.IDEOGRAM_API_KEY
+        'Api-Key': 'cTwZUoIc3Pse-EImC28fix8cWUWtB6CBdbRBRUny5KXjC00REAircBryE7r30G2fUxyk--vDBksFyB0BwnSAUg'
       },
       body: form
     });
