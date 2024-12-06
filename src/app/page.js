@@ -229,31 +229,36 @@ export default function Home() {
   async function handleEditImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      // Carica il file come base64
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          // Carica l'immagine su un server temporaneo o un servizio di storage
-          const formData = new FormData();
-          formData.append('image_file', file);
-          
-          const res = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData
-          });
-          
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Error uploading image');
-          
-          // Usa l'URL restituito dall'API
-          setImageUrl(data.url);
+      try {
+        // Crea un URL temporaneo per la preview
+        const objectUrl = URL.createObjectURL(file);
+        
+        // Carica l'immagine su Ideogram
+        const formData = new FormData();
+        formData.append('image_file', file);
+        
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error uploading image');
+        
+        // Usa l'URL restituito dall'API per l'editing
+        if (data && data.data && data.data[0] && data.data[0].url) {
+          setImageUrl(data.data[0].url);
           setIsEditMode(true);
-        } catch (err) {
-          console.error('Error uploading image:', err);
-          setError(err.message);
+        } else {
+          throw new Error('Invalid API response format');
         }
-      };
-      reader.readAsDataURL(file);
+
+        // Pulisci l'URL temporaneo
+        URL.revokeObjectURL(objectUrl);
+      } catch (err) {
+        console.error('Error uploading image:', err);
+        setError(err.message);
+      }
     }
   }
 
@@ -642,9 +647,4 @@ export default function Home() {
               alt="Immagine generata"
               className="w-full rounded-lg" 
             />
-          </div>
-        )}
-      </div>
-    </main>
-  );
-}
+ 
