@@ -660,50 +660,60 @@ export default function Home() {
           </div>
         )}
 
-        {!isEditMode && imageUrl && (
-          <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
-            <div className="flex justify-end mb-4 gap-2">
-              {previousImageUrl && (
-                <button
-                  onClick={() => {
-                    setNextImageUrl(imageUrl);
-                    setImageUrl(previousImageUrl);
-                    setPreviousImageUrl(null);
-                  }}
-                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-                >
-                  Undo Edit
-                </button>
-              )}
-              {nextImageUrl && (
-                <button
-                  onClick={() => {
-                    setPreviousImageUrl(imageUrl);
-                    setImageUrl(nextImageUrl);
-                    setNextImageUrl(null);
-                  }}
-                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-                >
-                  Redo Edit
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setIsEditMode(true);
-                  setEditPrompt('');
-                }}
-                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-              >
-                Edit
-              </button>
-            </div>
-            <img 
-              src={imageUrl} 
-              alt="Immagine generata"
-              className="w-full rounded-lg" 
-            />
-          </div>
-        )}
+       {!isEditMode && imageUrl && (
+  <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
+    <div className="flex justify-end mb-4 gap-2">
+      
+        href={imageUrl}
+        download="generated-image.jpg"
+        className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Download
+      </a>
+      {previousImageUrl && (
+        <button
+          onClick={() => {
+            setNextImageUrl(imageUrl);
+            setImageUrl(previousImageUrl);
+            setPreviousImageUrl(null);
+          }}
+          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+        >
+          Undo Edit
+        </button>
+      )}
+      {nextImageUrl && (
+        <button
+          onClick={() => {
+            setPreviousImageUrl(imageUrl);
+            setImageUrl(nextImageUrl);
+            setNextImageUrl(null);
+          }}
+          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+        >
+          Redo Edit
+        </button>
+      )}
+      <button
+        onClick={() => {
+          setIsEditMode(true);
+          setEditPrompt('');
+        }}
+        className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+      >
+        Edit
+      </button>
+    </div>
+    <img 
+      src={imageUrl} 
+      alt="Generated image"
+      className="w-full rounded-lg" 
+    />
+  </div>
+)}
+          
       </div>
     </main>
   );
