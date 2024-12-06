@@ -20,26 +20,24 @@ export default function Home() {
   const [maskFile, setMaskFile] = useState(null);
   const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
   const [previousImageUrl, setPreviousImageUrl] = useState(null);
-  const [nextImageUrl, setNextImageUrl] = useState(null);
-  const [editImageFile, setEditImageFile] = useState(null);
 
   const aspectRatioOptions = {
-    'ASPECT_1_1': '1:1 Square',
-    'ASPECT_10_16': '10:16 Portrait',
-    'ASPECT_16_10': '16:10 Landscape',
+    'ASPECT_1_1': '1:1 Quadrato',
+    'ASPECT_10_16': '10:16 Verticale',
+    'ASPECT_16_10': '16:10 Panoramico',
     'ASPECT_9_16': '9:16 Mobile',
     'ASPECT_16_9': '16:9 Widescreen',
-    'ASPECT_3_2': '3:2 Photo',
-    'ASPECT_2_3': '2:3 Portrait',
+    'ASPECT_3_2': '3:2 Fotografia',
+    'ASPECT_2_3': '2:3 Ritratto',
     'ASPECT_4_3': '4:3 Standard',
-    'ASPECT_3_4': '3:4 Portrait',
-    'ASPECT_1_3': '1:3 Vertical Banner',
-    'ASPECT_3_1': '3:1 Horizontal Banner'
+    'ASPECT_3_4': '3:4 Verticale',
+    'ASPECT_1_3': '1:3 Banner Verticale',
+    'ASPECT_3_1': '3:1 Banner Orizzontale'
   };
 
   const colorPalettes = {
     '': { 
-      name: 'No palette', 
+      name: 'Nessuna palette', 
       colors: [] 
     },
     'EMBER': { 
@@ -76,81 +74,12 @@ export default function Home() {
     }
   };
 
-  async function resizeImageIfNeeded(file) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error('Failed to load image'));
-      };
-      
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        
-        if (img.width <= 1024 && img.height <= 1024) {
-          resolve(file);
-          return;
-        }
-        
-        try {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          let newWidth = img.width;
-          let newHeight = img.height;
-          
-          if (newWidth > newHeight) {
-            if (newWidth > 1024) {
-              newHeight = Math.round((newHeight * 1024) / newWidth);
-              newWidth = 1024;
-            }
-          } else {
-            if (newHeight > 1024) {
-              newWidth = Math.round((newWidth * 1024) / newHeight);
-              newHeight = 1024;
-            }
-          }
-          
-          canvas.width = newWidth;
-          canvas.height = newHeight;
-          
-          ctx.drawImage(img, 0, 0, newWidth, newHeight);
-          
-          canvas.toBlob((blob) => {
-            if (!blob) {
-              reject(new Error('Failed to create blob'));
-              return;
-            }
-            
-            const resizedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
-            });
-            resolve(resizedFile);
-          }, 'image/jpeg', 0.9);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      
-      img.src = objectUrl;
-    });
-  }
-
-  async function handleFileChange(e) {
+  function handleFileChange(e) {
     const file = e.target.files[0];
     if (file) {
-      try {
-        const resizedFile = await resizeImageIfNeeded(file);
-        setImageFile(resizedFile);
-        const objectUrl = URL.createObjectURL(resizedFile);
-        setPreviewUrl(objectUrl);
-      } catch (error) {
-        console.error('Error resizing image:', error);
-        setError('Failed to process image. Please try a different image.');
-      }
+      setImageFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
     }
   }
 
@@ -202,10 +131,10 @@ export default function Home() {
       const data = await res.json();
       console.log('API Response:', data);
       
-      if (!res.ok) throw new Error(data.error || 'Error during processing');
+      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
       
       if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error('Invalid API response: unexpected format');
+        throw new Error('Risposta API non valida: formato inatteso');
       }
       
       setImageUrl(data.data[0].url);
@@ -221,20 +150,25 @@ export default function Home() {
     const canvas = document.getElementById('maskCanvas');
     const tempCanvas = document.createElement('canvas');
     
+    // Get the original image dimensions
     const img = new Image();
     await new Promise((resolve) => {
         img.onload = resolve;
         img.src = imageUrl;
     });
     
+    // Set the canvas to the exact dimensions of the original image
     tempCanvas.width = img.naturalWidth;
     tempCanvas.height = img.naturalHeight;
     
+    // Copy and scale the content from our drawing canvas
     const tempCtx = tempCanvas.getContext('2d');
     
+    // Riempi prima tutto di bianco (area da preservare)
     tempCtx.fillStyle = 'white';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
+    // Disegna il contenuto del canvas originale in nero
     tempCtx.globalCompositeOperation = 'difference';
     tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     
@@ -245,7 +179,7 @@ export default function Home() {
 
   async function handleGenerativeFill() {
     if (!imageUrl || !editPrompt) {
-      setError('Image and prompt are required');
+      setError('Sono necessari l\'immagine e il prompt');
       return;
     }
 
@@ -259,7 +193,7 @@ export default function Home() {
       console.log("Mask file size:", maskFile.size);
 
       const formData = new FormData();
-      formData.append('image_file', editImageFile);
+      formData.append('imageUrl', imageUrl);
       formData.append('mask', maskFile);
       formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
 
@@ -271,10 +205,10 @@ export default function Home() {
       const data = await res.json();
       console.log('Edit API Response:', data);
       
-      if (!res.ok) throw new Error(data.error || 'Error during processing');
+      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
       
       if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error('Invalid API response: unexpected format');
+        throw new Error('Risposta API non valida: formato inatteso');
       }
       
       setPreviousImageUrl(imageUrl);
@@ -291,51 +225,18 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  async function handleEditImageUpload(e) {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const resizedFile = await resizeImageIfNeeded(file);
-        const objectUrl = URL.createObjectURL(resizedFile);
-        setImageUrl(objectUrl);
-        setEditImageFile(resizedFile);
-        setIsEditMode(true);
-      } catch (error) {
-        console.error('Error resizing image:', error);
-        setError('Failed to process image. Please try a different image.');
-      }
-    }
-  }
-
   return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
-        <div className="flex items-center justify-between mb-12">
-          <h1 className="text-4xl font-bold title-font">
-            IMAGE GENERATOR
-          </h1>
-          <div>
-            <input
-              type="file"
-              onChange={handleEditImageUpload}
-              className="hidden"
-              id="edit-image-upload"
-              accept="image/*"
-            />
-            <label
-              htmlFor="edit-image-upload"
-              className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
-            >
-              Edit Image
-            </label>
-          </div>
-        </div>
+        <h1 className="text-4xl font-bold mb-12 text-center title-font">
+          IMAGE GENERATOR
+        </h1>
 
         {!isEditMode ? (
           <form onSubmit={handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
             <div className="space-y-2">
               <label className="block text-sm font-medium mb-2">
-                Reference image (optional)
+                Immagine di riferimento (opzionale)
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -349,7 +250,7 @@ export default function Home() {
                   htmlFor="file-upload"
                   className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Upload image
+                  Carica immagine
                 </label>
                 {imageFile && (
                   <button
@@ -357,7 +258,7 @@ export default function Home() {
                     onClick={clearImage}
                     className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
                   >
-                    Remove
+                    Rimuovi
                   </button>
                 )}
               </div>
@@ -376,7 +277,7 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium">
-                    Image weight: {imageWeight}%
+                    Peso dell&apos;immagine: {imageWeight}%
                   </label>
                   <input
                     type="range"
@@ -390,7 +291,7 @@ export default function Home() {
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Output Format
+                    Formato Output
                   </label>
                   <select
                     value={aspectRatio}
@@ -410,7 +311,7 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Format
+                      Formato
                     </label>
                     <select
                       value={aspectRatio}
@@ -425,7 +326,7 @@ export default function Home() {
 
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Color Palette
+                      Palette Colori
                     </label>
                     <div className="relative">
                       <div
@@ -480,7 +381,7 @@ export default function Home() {
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe the image you want to generate..."
+                placeholder="Descrivi l'immagine che vuoi generare..."
                 className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
                 required
               />
@@ -500,17 +401,17 @@ export default function Home() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generating...
+                  Generazione in corso...
                 </span>
               ) : (
-                imageFile ? 'Remix Image' : 'Generate Image'
+                imageFile ? 'Remix Immagine' : 'Genera Immagine'
               )}
             </button>
           </form>
         ) : (
           <div className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
             <div className="space-y-4">
-              <h2 className="text-xl font-bold">Edit Mode</h2>
+              <h2 className="text-xl font-bold">Modalità Editing</h2>
               
               <div className="mt-4 relative">
                 <img
@@ -533,7 +434,7 @@ export default function Home() {
 
                       const ctx = canvas.getContext('2d');
                       ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
-                      ctx.lineWidth = 70;
+                      ctx.lineWidth = 20;
                       ctx.lineCap = 'round';
 
                       let isDrawing = false;
@@ -590,15 +491,15 @@ export default function Home() {
                   }}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Clear Mask
+                  Pulisci Maschera
                 </button>
                 <div className="flex items-center gap-2 flex-1">
-                  <span className="text-sm whitespace-nowrap">Size:</span>
+                  <span className="text-sm whitespace-nowrap">Dimensione:</span>
                   <input
                     type="range"
                     min="20"
                     max="200"
-                    defaultValue="70"
+                    defaultValue="100"
                     onChange={(e) => {
                       const canvas = document.getElementById('maskCanvas');
                       const ctx = canvas.getContext('2d');
@@ -614,32 +515,22 @@ export default function Home() {
                   type="text"
                   value={editPrompt}
                   onChange={(e) => setEditPrompt(e.target.value)}
-                  placeholder="Describe what you want to generate in the masked area..."
+                  placeholder="Descrivi cosa vuoi generare nella zona mascherata..."
                   className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
                   required
                 />
               </div>
 
               <div className="flex gap-2">
-         <button
-  onClick={handleGenerativeFill}
-  disabled={loading || !editPrompt}
-  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
-           disabled:opacity-50 disabled:cursor-not-allowed
-           hover:bg-gray-200 transition-all duration-300"
->
-  {loading ? (
-    <span className="flex items-center justify-center">
-      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      Processing...
-    </span>
-  ) : (
-    'Generative Fill'
-  )}
-</button>
+                <button
+                  onClick={handleGenerativeFill}
+                  disabled={loading || !editPrompt}
+                  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           hover:bg-gray-200 transition-all duration-300"
+                >
+                  {loading ? 'Elaborazione...' : 'Generative Fill'}
+                </button>
                 <button
                   onClick={() => {
                     setIsEditMode(false);
@@ -647,7 +538,7 @@ export default function Home() {
                   }}
                   className="px-6 py-4 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
                 >
-                  Cancel
+                  Annulla
                 </button>
               </div>
             </div>
@@ -666,25 +557,12 @@ export default function Home() {
               {previousImageUrl && (
                 <button
                   onClick={() => {
-                    setNextImageUrl(imageUrl);
                     setImageUrl(previousImageUrl);
                     setPreviousImageUrl(null);
                   }}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Undo Edit
-                </button>
-              )}
-              {nextImageUrl && (
-                <button
-                  onClick={() => {
-                    setPreviousImageUrl(imageUrl);
-                    setImageUrl(nextImageUrl);
-                    setNextImageUrl(null);
-                  }}
-                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-                >
-                  Redo Edit
+                  Annulla Modifica
                 </button>
               )}
               <button
