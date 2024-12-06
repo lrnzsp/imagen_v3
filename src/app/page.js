@@ -147,36 +147,24 @@ export default function Home() {
 
   async function handleCanvasToMask() {
     const canvas = document.getElementById('maskCanvas');
-    // Crea un canvas temporaneo con le dimensioni corrette
+    // Creiamo un nuovo canvas temporaneo con le dimensioni corrette
     const tempCanvas = document.createElement('canvas');
     
-    // Ottiene le dimensioni originali dell'immagine
+    // Get the original image dimensions
     const img = new Image();
     await new Promise((resolve) => {
-        img.onload = resolve;
-        img.src = imageUrl;
+      img.onload = resolve;
+      img.src = imageUrl;
     });
     
-    // Imposta le dimensioni del canvas temporaneo
+    // Set the canvas to the exact dimensions of the original image
     tempCanvas.width = img.naturalWidth;
     tempCanvas.height = img.naturalHeight;
     
-    // Copia e scala il contenuto dal canvas di disegno
+    // Copy and scale the content from our drawing canvas
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     
-    // Inverte i colori
-    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-        data[i] = 255 - data[i];         // R
-        data[i + 1] = 255 - data[i + 1]; // G
-        data[i + 2] = 255 - data[i + 2]; // B
-        // Alpha rimane invariato
-    }
-    tempCtx.putImageData(imageData, 0, 0);
-    
-    // Converte il canvas in un file
     const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
     const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
     return maskFile;
@@ -423,6 +411,7 @@ export default function Home() {
                   alt="Immagine da modificare"
                   className="w-full rounded-lg"
                   onLoad={(e) => {
+                    // Otteniamo le dimensioni reali dell'immagine
                     const img = e.target;
                     const tempImg = new Image();
                     tempImg.onload = () => {
@@ -436,8 +425,7 @@ export default function Home() {
                       canvas.style.top = '0';
 
                       const ctx = canvas.getContext('2d');
-                      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                      ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
                       ctx.lineWidth = 20;
                       ctx.lineCap = 'round';
 
@@ -501,9 +489,9 @@ export default function Home() {
                   <span className="text-sm whitespace-nowrap">Dimensione:</span>
                   <input
                     type="range"
-                    min="5"
-                    max="50"
-                    defaultValue="20"
+                    min="20"
+                    max="200"
+                    defaultValue="100"
                     onChange={(e) => {
                       const canvas = document.getElementById('maskCanvas');
                       const ctx = canvas.getContext('2d');
