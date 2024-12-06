@@ -14,10 +14,18 @@ export async function POST(req) {
     const imageBlob = await imageRes.blob();
     const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' });
 
+    // Inverti i colori della maschera
+    const maskBuffer = await maskFile.arrayBuffer();
+    const maskData = new Uint8Array(maskBuffer);
+    for (let i = 0; i < maskData.length; i++) {
+      maskData[i] = 255 - maskData[i];
+    }
+    const invertedMask = new File([maskData], 'mask.png', { type: 'image/png' });
+
     // Prepara formData per Ideogram esattamente come nella documentazione
     const form = new FormData();
     form.append('image_file', imageFile);
-    form.append('mask', maskFile);
+    form.append('mask', invertedMask);  // Usa la maschera invertita
     form.append('prompt', prompt);
     form.append('model', 'V_2');
     form.append('style_type', 'REALISTIC');
