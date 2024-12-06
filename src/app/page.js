@@ -650,13 +650,13 @@ export default function Home() {
           </div>
         )}
 
-        {error && (
+       {error && (
           <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
             {error}
           </div>
         )}
 
-{!isEditMode && imageUrl && (
+        {!isEditMode && imageUrl && (
           <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
             <div className="flex justify-end mb-4 gap-2">
               
@@ -709,7 +709,6 @@ export default function Home() {
             />
           </div>
         )}
-        </div>
       </div>
     </main>
   );
