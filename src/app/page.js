@@ -21,24 +21,26 @@ export default function Home() {
   const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
   const [previousImageUrl, setPreviousImageUrl] = useState(null);
   const [nextImageUrl, setNextImageUrl] = useState(null);
+  const [canvasStates, setCanvasStates] = useState([]);
+  const [currentStateIndex, setCurrentStateIndex] = useState(-1);
 
   const aspectRatioOptions = {
-    'ASPECT_1_1': '1:1 Quadrato',
-    'ASPECT_10_16': '10:16 Verticale',
-    'ASPECT_16_10': '16:10 Panoramico',
+    'ASPECT_1_1': '1:1 Square',
+    'ASPECT_10_16': '10:16 Portrait',
+    'ASPECT_16_10': '16:10 Landscape',
     'ASPECT_9_16': '9:16 Mobile',
     'ASPECT_16_9': '16:9 Widescreen',
-    'ASPECT_3_2': '3:2 Fotografia',
-    'ASPECT_2_3': '2:3 Ritratto',
+    'ASPECT_3_2': '3:2 Photo',
+    'ASPECT_2_3': '2:3 Portrait',
     'ASPECT_4_3': '4:3 Standard',
-    'ASPECT_3_4': '3:4 Verticale',
-    'ASPECT_1_3': '1:3 Banner Verticale',
-    'ASPECT_3_1': '3:1 Banner Orizzontale'
+    'ASPECT_3_4': '3:4 Portrait',
+    'ASPECT_1_3': '1:3 Vertical Banner',
+    'ASPECT_3_1': '3:1 Horizontal Banner'
   };
 
   const colorPalettes = {
     '': { 
-      name: 'Nessuna palette', 
+      name: 'No palette', 
       colors: [] 
     },
     'EMBER': { 
@@ -132,10 +134,10 @@ export default function Home() {
       const data = await res.json();
       console.log('API Response:', data);
       
-      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
+      if (!res.ok) throw new Error(data.error || 'Error during processing');
       
       if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error('Risposta API non valida: formato inatteso');
+        throw new Error('Invalid API response: unexpected format');
       }
       
       setImageUrl(data.data[0].url);
@@ -180,7 +182,7 @@ export default function Home() {
 
   async function handleGenerativeFill() {
     if (!imageUrl || !editPrompt) {
-      setError('Sono necessari l\'immagine e il prompt');
+      setError('Image and prompt are required');
       return;
     }
 
@@ -206,10 +208,10 @@ export default function Home() {
       const data = await res.json();
       console.log('Edit API Response:', data);
       
-      if (!res.ok) throw new Error(data.error || 'Errore durante l\'elaborazione');
+      if (!res.ok) throw new Error(data.error || 'Error during processing');
       
       if (!data || !data.data || !data.data[0] || !data.data[0].url) {
-        throw new Error('Risposta API non valida: formato inatteso');
+        throw new Error('Invalid API response: unexpected format');
       }
       
       setPreviousImageUrl(imageUrl);
@@ -221,6 +223,44 @@ export default function Home() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function saveCanvasState() {
+    const canvas = document.getElementById('maskCanvas');
+    const state = canvas.toDataURL();
+    
+    // Rimuovi gli stati futuri se stiamo disegnando dopo un undo
+    const newStates = canvasStates.slice(0, currentStateIndex + 1);
+    setCanvasStates([...newStates, state]);
+    setCurrentStateIndex(newStates.length);
+  }
+
+  function handleUndo() {
+    if (currentStateIndex > 0) {
+      const canvas = document.getElementById('maskCanvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = canvasStates[currentStateIndex - 1];
+      setCurrentStateIndex(currentStateIndex - 1);
+    }
+  }
+
+  function handleRedo() {
+    if (currentStateIndex < canvasStates.length - 1) {
+      const canvas = document.getElementById('maskCanvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = canvasStates[currentStateIndex + 1];
+      setCurrentStateIndex(currentStateIndex + 1);
     }
   }
 
@@ -237,7 +277,7 @@ export default function Home() {
           <form onSubmit={handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
             <div className="space-y-2">
               <label className="block text-sm font-medium mb-2">
-                Immagine di riferimento (opzionale)
+                Reference image (optional)
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -251,7 +291,7 @@ export default function Home() {
                   htmlFor="file-upload"
                   className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Carica immagine
+                  Upload image
                 </label>
                 {imageFile && (
                   <button
@@ -259,7 +299,7 @@ export default function Home() {
                     onClick={clearImage}
                     className="px-3 py-2 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
                   >
-                    Rimuovi
+                    Remove
                   </button>
                 )}
               </div>
@@ -278,7 +318,7 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium">
-                    Peso dell&apos;immagine: {imageWeight}%
+                    Image weight: {imageWeight}%
                   </label>
                   <input
                     type="range"
@@ -292,7 +332,7 @@ export default function Home() {
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Formato Output
+                    Output Format
                   </label>
                   <select
                     value={aspectRatio}
@@ -312,7 +352,7 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Formato
+                      Format
                     </label>
                     <select
                       value={aspectRatio}
@@ -327,7 +367,7 @@ export default function Home() {
 
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Palette Colori
+                      Color Palette
                     </label>
                     <div className="relative">
                       <div
@@ -382,7 +422,7 @@ export default function Home() {
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Descrivi l'immagine che vuoi generare..."
+                placeholder="Describe the image you want to generate..."
                 className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
                 required
               />
@@ -402,17 +442,17 @@ export default function Home() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generazione in corso...
+                  Generating...
                 </span>
               ) : (
-                imageFile ? 'Remix Immagine' : 'Genera Immagine'
+                imageFile ? 'Remix Image' : 'Generate Image'
               )}
             </button>
           </form>
         ) : (
           <div className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
             <div className="space-y-4">
-              <h2 className="text-xl font-bold">Modalità Editing</h2>
+              <h2 className="text-xl font-bold">Edit Mode</h2>
               
               <div className="mt-4 relative">
                 <img
@@ -435,7 +475,7 @@ export default function Home() {
 
                       const ctx = canvas.getContext('2d');
                       ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
-                      ctx.lineWidth = 20;
+                      ctx.lineWidth = 70;
                       ctx.lineCap = 'round';
 
                       let isDrawing = false;
@@ -467,7 +507,10 @@ export default function Home() {
                         [lastX, lastY] = [currentX, currentY];
                       };
 
-                      canvas.onmouseup = () => isDrawing = false;
+                      canvas.onmouseup = () => {
+                        isDrawing = false;
+                        saveCanvasState();
+                      };
                       canvas.onmouseleave = () => isDrawing = false;
                     };
                     tempImg.src = imageUrl;
@@ -489,18 +532,33 @@ export default function Home() {
                     const canvas = document.getElementById('maskCanvas');
                     const ctx = canvas.getContext('2d');
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    saveCanvasState();
                   }}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Pulisci Maschera
+                  Clear Mask
+                </button>
+                <button
+                  onClick={handleUndo}
+                  disabled={currentStateIndex <= 0}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={currentStateIndex >= canvasStates.length - 1}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Redo
                 </button>
                 <div className="flex items-center gap-2 flex-1">
-                  <span className="text-sm whitespace-nowrap">Dimensione:</span>
+                  <span className="text-sm whitespace-nowrap">Size:</span>
                   <input
                     type="range"
                     min="20"
                     max="200"
-                    defaultValue="100"
+                    defaultValue="70"
                     onChange={(e) => {
                       const canvas = document.getElementById('maskCanvas');
                       const ctx = canvas.getContext('2d');
@@ -516,7 +574,7 @@ export default function Home() {
                   type="text"
                   value={editPrompt}
                   onChange={(e) => setEditPrompt(e.target.value)}
-                  placeholder="Descrivi cosa vuoi generare nella zona mascherata..."
+                  placeholder="Describe what you want to generate in the masked area..."
                   className="w-full p-4 bg-black border border-white rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-white transition-all duration-300"
                   required
                 />
@@ -530,7 +588,7 @@ export default function Home() {
                            disabled:opacity-50 disabled:cursor-not-allowed
                            hover:bg-gray-200 transition-all duration-300"
                 >
-                  {loading ? 'Elaborazione...' : 'Generative Fill'}
+                  {loading ? 'Processing...' : 'Generative Fill'}
                 </button>
                 <button
                   onClick={() => {
@@ -539,7 +597,7 @@ export default function Home() {
                   }}
                   className="px-6 py-4 text-white border border-white rounded-lg hover:bg-white/10 transition-all duration-300"
                 >
-                  Annulla
+                  Cancel
                 </button>
               </div>
             </div>
@@ -558,25 +616,25 @@ export default function Home() {
               {previousImageUrl && (
                 <button
                   onClick={() => {
-                    setNextImageUrl(imageUrl);      // Salva l'immagine corrente per il redo
+                    setNextImageUrl(imageUrl);
                     setImageUrl(previousImageUrl);
                     setPreviousImageUrl(null);
                   }}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Annulla Modifica
+                  Undo Edit
                 </button>
               )}
               {nextImageUrl && (
                 <button
                   onClick={() => {
-                    setPreviousImageUrl(imageUrl);  // Salva l'immagine corrente per poter tornare indietro
+                    setPreviousImageUrl(imageUrl);
                     setImageUrl(nextImageUrl);
                     setNextImageUrl(null);
                   }}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Ripristina Modifica
+                  Redo Edit
                 </button>
               )}
               <button
