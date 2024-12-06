@@ -226,12 +226,38 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
+  function handleEditImageUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      setImageUrl(objectUrl);
+      setIsEditMode(true);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
-        <h1 className="text-4xl font-bold mb-12 text-center title-font">
-          IMAGE GENERATOR
-        </h1>
+        <div className="flex items-center justify-between mb-12">
+          <h1 className="text-4xl font-bold title-font">
+            IMAGE GENERATOR
+          </h1>
+          <div>
+            <input
+              type="file"
+              onChange={handleEditImageUpload}
+              className="hidden"
+              id="edit-image-upload"
+              accept="image/*"
+            />
+            <label
+              htmlFor="edit-image-upload"
+              className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
+            >
+              Edit Image
+            </label>
+          </div>
+        </div>
 
         {!isEditMode ? (
           <form onSubmit={handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
