@@ -478,11 +478,6 @@ export default function Home() {
                       ctx.lineWidth = 70;
                       ctx.lineCap = 'round';
 
-                      // Salva lo stato iniziale del canvas (vuoto)
-                      const initialState = canvas.toDataURL();
-                      setCanvasStates([initialState]);
-                      setCurrentStateIndex(0);
-
                       let isDrawing = false;
                       let lastX = 0;
                       let lastY = 0;
@@ -513,10 +508,23 @@ export default function Home() {
                       };
 
                       canvas.onmouseup = () => {
-                        isDrawing = false;
-                        saveCanvasState();
+                        if (isDrawing) {  // Solo se stavamo effettivamente disegnando
+                          isDrawing = false;
+                          saveCanvasState();  // Salva lo stato dopo ogni pennellata completata
+                        }
                       };
-                      canvas.onmouseleave = () => isDrawing = false;
+
+                      canvas.onmouseleave = () => {
+                        if (isDrawing) {  // Se usciamo mentre stavamo disegnando
+                          isDrawing = false;
+                          saveCanvasState();  // Salva lo stato anche in questo caso
+                        }
+                      };
+
+                      // Salva lo stato iniziale del canvas vuoto
+                      const initialState = canvas.toDataURL();
+                      setCanvasStates([initialState]);
+                      setCurrentStateIndex(0);
                     };
                     tempImg.src = imageUrl;
                   }}
