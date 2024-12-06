@@ -226,12 +226,34 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  function handleEditImageUpload(e) {
+  async function handleEditImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setImageUrl(objectUrl);
-      setIsEditMode(true);
+      // Carica il file come base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          // Carica l'immagine su un server temporaneo o un servizio di storage
+          const formData = new FormData();
+          formData.append('image_file', file);
+          
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Error uploading image');
+          
+          // Usa l'URL restituito dall'API
+          setImageUrl(data.url);
+          setIsEditMode(true);
+        } catch (err) {
+          console.error('Error uploading image:', err);
+          setError(err.message);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   }
 
