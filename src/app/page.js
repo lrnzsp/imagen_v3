@@ -19,6 +19,7 @@ export default function Home() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [maskFile, setMaskFile] = useState(null);
   const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
+  const [previousImageUrl, setPreviousImageUrl] = useState(null);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Quadrato',
@@ -210,6 +211,7 @@ export default function Home() {
         throw new Error('Risposta API non valida: formato inatteso');
       }
       
+      setPreviousImageUrl(imageUrl);
       setImageUrl(data.data[0].url);
       setIsEditMode(false);
       setEditPrompt('');
@@ -551,7 +553,18 @@ export default function Home() {
 
         {!isEditMode && imageUrl && (
           <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-end mb-4 gap-2">
+              {previousImageUrl && (
+                <button
+                  onClick={() => {
+                    setImageUrl(previousImageUrl);
+                    setPreviousImageUrl(null);
+                  }}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Annulla Modifica
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsEditMode(true);
