@@ -9,10 +9,13 @@ export async function POST(req) {
     const imageUrl = formData.get('imageUrl');
     const prompt = formData.get('prompt');
 
-    // Download immagine
+    // Download image and ensure it's in JPEG format
     const imageRes = await fetch(imageUrl);
     const imageBlob = await imageRes.blob();
-    const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' });
+    const imageFile = new File([imageBlob], 'image.jpeg', { 
+      type: 'image/jpeg',
+      lastModified: new Date().getTime()
+    });
 
     // Inverti la maschera
     const maskBlob = await maskFile.arrayBuffer();
@@ -20,8 +23,11 @@ export async function POST(req) {
     for (let i = 0; i < maskUint8.length; i++) {
       maskUint8[i] = 255 - maskUint8[i];
     }
-    const invertedMaskBlob = new Blob([maskUint8], { type: maskFile.type });
-    const invertedMaskFile = new File([invertedMaskBlob], 'mask.png', { type: maskFile.type });
+    const invertedMaskBlob = new Blob([maskUint8], { type: 'image/png' });
+    const invertedMaskFile = new File([invertedMaskBlob], 'mask.png', { 
+      type: 'image/png',
+      lastModified: new Date().getTime()
+    });
 
     // Prepara formData per Ideogram
     const form = new FormData();
@@ -33,7 +39,9 @@ export async function POST(req) {
 
     console.log('Sending to Ideogram:', {
       hasImageFile: !!form.get('image_file'),
+      imageFileType: imageFile.type,
       hasMask: !!form.get('mask'),
+      maskFileType: invertedMaskFile.type,
       prompt: prompt
     });
 
