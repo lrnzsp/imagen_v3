@@ -2,20 +2,6 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
-async function convertToJpeg(blob) {
-  // Create ImageData from blob
-  const arrayBuffer = await blob.arrayBuffer();
-  const response = await fetch('data:' + blob.type + ';base64,' + Buffer.from(arrayBuffer).toString('base64'));
-  const imageData = await response.blob();
-  
-  // Convert to JPEG
-  const jpegBlob = new Blob([imageData], { type: 'image/jpeg' });
-  return new File([jpegBlob], 'image.jpeg', {
-    type: 'image/jpeg',
-    lastModified: new Date().getTime()
-  });
-}
-
 export async function POST(req) {
   try {
     const formData = await req.formData();
@@ -26,42 +12,32 @@ export async function POST(req) {
     // Download image
     const imageRes = await fetch(imageUrl);
     const imageBlob = await imageRes.blob();
-    console.log('Original image type:', imageBlob.type);
+    const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' });
 
-    // Convert image to JPEG
-    const imageFile = await convertToJpeg(imageBlob);
-    console.log('Converted image type:', imageFile.type);
-
-    // Handle mask
+    // Process mask
     const maskBlob = await maskFile.arrayBuffer();
     const maskUint8 = new Uint8Array(maskBlob);
     for (let i = 0; i < maskUint8.length; i++) {
       maskUint8[i] = 255 - maskUint8[i];
     }
-    const invertedMaskBlob = new Blob([maskUint8], { type: 'image/png' });
-    const invertedMaskFile = new File([invertedMaskBlob], 'mask.png', { 
-      type: 'image/png',
-      lastModified: new Date().getTime()
-    });
+    const invertedMaskFile = new File([maskUint8], 'mask.png', { type: 'image/png' });
 
-    // Prepare FormData
+    // Create form data exactly as in the documentation
     const form = new FormData();
     form.append('image_file', imageFile);
     form.append('mask', invertedMaskFile);
     form.append('prompt', prompt);
-    form.append('model', 'V_2');
-    form.append('style_type', 'REALISTIC');
+    form.append('model', 'V_1');
+    form.append('magic_prompt_option', '');
+    form.append('seed', '');
+    form.append('style_type', '');
 
-    // Enhanced logging
     console.log('Sending to Ideogram:', {
       hasImageFile: !!form.get('image_file'),
-      imageFileType: imageFile.type,
-      imageFileName: imageFile.name,
-      imageFileSize: imageFile.size,
+      imageType: imageFile.type,
       hasMask: !!form.get('mask'),
-      maskFileType: invertedMaskFile.type,
-      maskFileSize: invertedMaskFile.size,
-      prompt: prompt
+      maskType: invertedMaskFile.type,
+      prompt
     });
 
     const response = await fetch('https://api.ideogram.ai/edit', {
@@ -72,8 +48,6 @@ export async function POST(req) {
       body: form
     });
 
-    console.log('Response status:', response.status);
-    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('API Error:', errorText);
@@ -81,13 +55,6 @@ export async function POST(req) {
     }
 
     const data = await response.json();
-    console.log('Ideogram response data:', JSON.stringify(data, null, 2));
-    
-    if (!data || !data.image_url) {
-      console.error('Invalid API response format:', data);
-      return NextResponse.json({ error: 'Invalid API response format' }, { status: 500 });
-    }
-
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error details:', error);
