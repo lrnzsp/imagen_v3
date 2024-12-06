@@ -425,7 +425,7 @@ export default function Home() {
                       canvas.style.top = '0';
 
                       const ctx = canvas.getContext('2d');
-                      ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
+                      ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
                       ctx.lineWidth = 20;
                       ctx.lineCap = 'round';
 
