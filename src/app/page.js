@@ -307,7 +307,6 @@ export default function Home() {
     }
   }
 
-
   return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
@@ -419,8 +418,7 @@ export default function Home() {
                       ))}
                     </select>
                   </div>
-
-                  <div>
+<div>
                     <label className="block text-sm font-medium mb-1">
                       Color Palette
                     </label>
@@ -650,7 +648,7 @@ export default function Home() {
           </div>
         )}
 
-       {error && (
+        {error && (
           <div className="mt-6 p-4 border border-red-500 text-red-500 rounded-lg">
             {error}
           </div>
@@ -713,3 +711,4 @@ export default function Home() {
     </main>
   );
 }
+                  
