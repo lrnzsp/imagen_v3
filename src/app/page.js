@@ -226,12 +226,45 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  function handleEditImageUpload(e) {
+  async function handleEditImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setImageUrl(objectUrl);
-      setIsEditMode(true);
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Crea un FormData con l'immagine
+        const formData = new FormData();
+        const objectUrl = URL.createObjectURL(file);
+        formData.append('imageUrl', objectUrl);
+        formData.append('prompt', `${FIXED_PREFIX} a fashion photograph`); // prompt di default
+
+        const res = await fetch('/api/edit', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        console.log('Edit API Response:', data);
+        
+        if (!res.ok) throw new Error(data.error || 'Error during processing');
+        
+        if (!data || !data.data || !data.data[0] || !data.data[0].url) {
+          throw new Error('Invalid API response: unexpected format');
+        }
+        
+        setImageUrl(data.data[0].url);
+        setIsEditMode(true);
+      } catch (err) {
+        console.error('Error details:', err);
+        setError(err.message);
+        // Se c'è un errore, mostra comunque l'immagine originale in modalità edit
+        const objectUrl = URL.createObjectURL(file);
+        setImageUrl(objectUrl);
+        setIsEditMode(true);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
