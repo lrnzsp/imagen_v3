@@ -307,36 +307,17 @@ export default function Home() {
     }
   }
 
+
   return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto">
-        <div className="flex items-center justify-between mb-12">
-          <h1 className="text-4xl font-bold title-font">
-            IMAGE GENERATOR
-          </h1>
-          <div>
-            <input
-              type="file"
-              onChange={handleEditImageUpload}
-              className="hidden"
-              id="edit-image-upload"
-              accept="image/*"
-            />
-            <label
-              htmlFor="edit-image-upload"
-              className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
-            >
-              Edit Image
-            </label>
-          </div>
-        </div>
+        <h1 className="text-4xl font-bold title-font mb-12">
+          IMAGE GENERATOR
+        </h1>
 
         {!isEditMode ? (
           <form onSubmit={handleSubmit} className="space-y-6 bg-black border border-white/20 rounded-2xl p-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium mb-2">
-                Reference image (optional)
-              </label>
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <input
                   type="file"
@@ -349,7 +330,7 @@ export default function Home() {
                   htmlFor="file-upload"
                   className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
-                  Upload image
+                  Reference image
                 </label>
                 {imageFile && (
                   <button
@@ -361,16 +342,32 @@ export default function Home() {
                   </button>
                 )}
               </div>
-              {previewUrl && (
-                <div className="mt-4">
-                  <img
-                    src={previewUrl}
-                    alt="Anteprima"
-                    className="w-full max-h-48 object-contain rounded-xl border border-white/20"
-                  />
-                </div>
-              )}
+              <div>
+                <input
+                  type="file"
+                  onChange={handleEditImageUpload}
+                  className="hidden"
+                  id="edit-image-upload"
+                  accept="image/*"
+                />
+                <label
+                  htmlFor="edit-image-upload"
+                  className="cursor-pointer bg-white text-black px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Edit Image
+                </label>
+              </div>
             </div>
+
+            {previewUrl && (
+              <div className="mt-4">
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="w-full max-h-48 object-contain rounded-xl border border-white/20"
+                />
+              </div>
+            )}
 
             {imageFile && (
               <div className="space-y-4">
@@ -515,10 +512,9 @@ export default function Home() {
               <div className="mt-4 relative">
                 <img
                   src={imageUrl}
-                  alt="Immagine da modificare"
+                  alt="Image to modify"
                   className="w-full rounded-lg"
                   onLoad={(e) => {
-                    // Otteniamo le dimensioni reali dell'immagine
                     const img = e.target;
                     const tempImg = new Image();
                     tempImg.onload = () => {
@@ -621,25 +617,25 @@ export default function Home() {
               </div>
 
               <div className="flex gap-2">
-         <button
-  onClick={handleGenerativeFill}
-  disabled={loading || !editPrompt}
-  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
-           disabled:opacity-50 disabled:cursor-not-allowed
-           hover:bg-gray-200 transition-all duration-300"
->
-  {loading ? (
-    <span className="flex items-center justify-center">
-      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      Processing...
-    </span>
-  ) : (
-    'Generative Fill'
-  )}
-</button>
+                <button
+                  onClick={handleGenerativeFill}
+                  disabled={loading || !editPrompt}
+                  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           hover:bg-gray-200 transition-all duration-300"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : (
+                    'Generative Fill'
+                  )}
+                </button>
                 <button
                   onClick={() => {
                     setIsEditMode(false);
@@ -660,61 +656,59 @@ export default function Home() {
           </div>
         )}
 
-      {!isEditMode && imageUrl && (
-  <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
-    <div className="flex justify-end mb-4 gap-2">
-      
-        href={imageUrl}
-        download="generated-image.jpg"
-        className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Download
-      </a>
-      {previousImageUrl && (
-        <button
-          onClick={() => {
-            setNextImageUrl(imageUrl);
-            setImageUrl(previousImageUrl);
-            setPreviousImageUrl(null);
-          }}
-          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-        >
-          Undo Edit
-        </button>
-      )}
-      {nextImageUrl && (
-        <button
-          onClick={() => {
-            setPreviousImageUrl(imageUrl);
-            setImageUrl(nextImageUrl);
-            setNextImageUrl(null);
-          }}
-          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-        >
-          Redo Edit
-        </button>
-      )}
-      <button
-        onClick={() => {
-          setIsEditMode(true);
-          setEditPrompt('');
-        }}
-        className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
-      >
-        Edit
-      </button>
-    </div>
-    <img 
-      src={imageUrl} 
-      alt="Generated image"
-      className="w-full rounded-lg" 
-    />
-  </div>
-)}
-          
+        {!isEditMode && imageUrl && (
+          <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
+            <div className="flex justify-end mb-4 gap-2">
+              
+                href={imageUrl}
+                download="generated-image.jpg"
+                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Download
+              </a>
+              {previousImageUrl && (
+                <button
+                  onClick={() => {
+                    setNextImageUrl(imageUrl);
+                    setImageUrl(previousImageUrl);
+                    setPreviousImageUrl(null);
+                  }}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Undo Edit
+                </button>
+              )}
+              {nextImageUrl && (
+                <button
+                  onClick={() => {
+                    setPreviousImageUrl(imageUrl);
+                    setImageUrl(nextImageUrl);
+                    setNextImageUrl(null);
+                  }}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Redo Edit
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setIsEditMode(true);
+                  setEditPrompt('');
+                }}
+                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+              >
+                Edit
+              </button>
+            </div>
+            <img 
+              src={imageUrl} 
+              alt="Generated image"
+              className="w-full rounded-lg" 
+            />
+          </div>
+        )}
       </div>
     </main>
   );
-}
