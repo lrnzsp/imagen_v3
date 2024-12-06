@@ -147,14 +147,13 @@ export default function Home() {
 
   async function handleCanvasToMask() {
     const canvas = document.getElementById('maskCanvas');
-    // Creiamo un nuovo canvas temporaneo con le dimensioni corrette
     const tempCanvas = document.createElement('canvas');
     
     // Get the original image dimensions
     const img = new Image();
     await new Promise((resolve) => {
-      img.onload = resolve;
-      img.src = imageUrl;
+        img.onload = resolve;
+        img.src = imageUrl;
     });
     
     // Set the canvas to the exact dimensions of the original image
@@ -163,6 +162,14 @@ export default function Home() {
     
     // Copy and scale the content from our drawing canvas
     const tempCtx = tempCanvas.getContext('2d');
+    
+    // Riempi prima tutto di bianco (area da preservare)
+    tempCtx.fillStyle = 'white';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // Disegna il contenuto del canvas originale in nero
+    tempCtx.globalCompositeOperation = 'source-in';
+    tempCtx.fillStyle = 'black';
     tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     
     const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
