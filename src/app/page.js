@@ -20,6 +20,7 @@ export default function Home() {
   const [maskFile, setMaskFile] = useState(null);
   const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
   const [previousImageUrl, setPreviousImageUrl] = useState(null);
+  const [nextImageUrl, setNextImageUrl] = useState(null);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Quadrato',
@@ -557,12 +558,25 @@ export default function Home() {
               {previousImageUrl && (
                 <button
                   onClick={() => {
+                    setNextImageUrl(imageUrl);      // Salva l'immagine corrente per il redo
                     setImageUrl(previousImageUrl);
                     setPreviousImageUrl(null);
                   }}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
                 >
                   Annulla Modifica
+                </button>
+              )}
+              {nextImageUrl && (
+                <button
+                  onClick={() => {
+                    setPreviousImageUrl(imageUrl);  // Salva l'immagine corrente per poter tornare indietro
+                    setImageUrl(nextImageUrl);
+                    setNextImageUrl(null);
+                  }}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
+                >
+                  Ripristina Modifica
                 </button>
               )}
               <button
