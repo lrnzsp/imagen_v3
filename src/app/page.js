@@ -5,7 +5,6 @@ import { useState } from 'react';
 const FIXED_PREFIX = "a fashion photograph of";
 
 export default function Home() {
-  // Base states
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -13,21 +12,16 @@ export default function Home() {
   const [imageFile, setImageFile] = useState(null);
   const [imageWeight, setImageWeight] = useState(50);
   const [previewUrl, setPreviewUrl] = useState(null);
-
-  // Format and style states
   const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
   const [colorPalette, setColorPalette] = useState('');
   const [isOpenPalette, setIsOpenPalette] = useState(false);
-
-  // Edit mode states
   const [editPrompt, setEditPrompt] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [maskFile, setMaskFile] = useState(null);
   const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
   const [previousImageUrl, setPreviousImageUrl] = useState(null);
   const [nextImageUrl, setNextImageUrl] = useState(null);
-  const [canvasStates, setCanvasStates] = useState([]);
-  const [currentStateIndex, setCurrentStateIndex] = useState(-1);
+  const [editImageFile, setEditImageFile] = useState(null);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Square',
@@ -172,11 +166,11 @@ export default function Home() {
     // Copy and scale the content from our drawing canvas
     const tempCtx = tempCanvas.getContext('2d');
     
-    // Fill everything with white first (area to preserve)
+    // Riempi prima tutto di bianco (area da preservare)
     tempCtx.fillStyle = 'white';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
-    // Draw the original canvas content in black
+    // Disegna il contenuto del canvas originale in nero
     tempCtx.globalCompositeOperation = 'difference';
     tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     
@@ -201,11 +195,9 @@ export default function Home() {
       console.log("Mask file size:", maskFile.size);
 
       const formData = new FormData();
-      formData.append('imageUrl', imageUrl);
+      formData.append('image_file', editImageFile);
       formData.append('mask', maskFile);
       formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
-      formData.append('model', 'V_2');
-      formData.append('style_type', 'REALISTIC');
 
       const res = await fetch('/api/edit', {
         method: 'POST',
@@ -233,45 +225,17 @@ export default function Home() {
     }
   }
 
-  function saveCanvasState() {
-    const canvas = document.getElementById('maskCanvas');
-    const state = canvas.toDataURL();
-    
-    // Remove future states if we're drawing after an undo
-    const newStates = canvasStates.slice(0, currentStateIndex + 1);
-    setCanvasStates([...newStates, state]);
-    setCurrentStateIndex(currentStateIndex + 1);
-  }
-
-  function handleUndo() {
-    if (currentStateIndex > 0) {
-      const canvas = document.getElementById('maskCanvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-      };
-      img.src = canvasStates[currentStateIndex - 1];
-      setCurrentStateIndex(currentStateIndex - 1);
-    }
-  }
-
-  function handleRedo() {
-    if (currentStateIndex < canvasStates.length - 1) {
-      const canvas = document.getElementById('maskCanvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-      };
-      img.src = canvasStates[currentStateIndex + 1];
-      setCurrentStateIndex(currentStateIndex + 1);
-    }
-  }
-
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
+
+  function handleEditImageUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      setImageUrl(objectUrl);
+      setEditImageFile(file);
+      setIsEditMode(true);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-black text-white p-8">
@@ -587,25 +551,15 @@ export default function Home() {
               </div>
 
               <div className="flex gap-2">
-         <button
-  onClick={handleGenerativeFill}
-  disabled={loading || !editPrompt}
-  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
-           disabled:opacity-50 disabled:cursor-not-allowed
-           hover:bg-gray-200 transition-all duration-300"
->
-  {loading ? (
-    <span className="flex items-center justify-center">
-      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      Processing...
-    </span>
-  ) : (
-    'Generative Fill'
-  )}
-</button>
+                <button
+                  onClick={handleGenerativeFill}
+                  disabled={loading || !editPrompt}
+                  className="flex-1 bg-white text-black p-4 rounded-lg font-medium 
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           hover:bg-gray-200 transition-all duration-300"
+                >
+                  {loading ? 'Processing...' : 'Generative Fill'}
+                </button>
                 <button
                   onClick={() => {
                     setIsEditMode(false);
