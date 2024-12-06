@@ -660,7 +660,7 @@ export default function Home() {
           </div>
         )}
 
-       {!isEditMode && imageUrl && (
+      {!isEditMode && imageUrl && (
   <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
     <div className="flex justify-end mb-4 gap-2">
       
