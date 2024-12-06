@@ -147,24 +147,36 @@ export default function Home() {
 
   async function handleCanvasToMask() {
     const canvas = document.getElementById('maskCanvas');
-    // Creiamo un nuovo canvas temporaneo con le dimensioni corrette
+    // Crea un canvas temporaneo con le dimensioni corrette
     const tempCanvas = document.createElement('canvas');
     
-    // Get the original image dimensions
+    // Ottiene le dimensioni originali dell'immagine
     const img = new Image();
     await new Promise((resolve) => {
-      img.onload = resolve;
-      img.src = imageUrl;
+        img.onload = resolve;
+        img.src = imageUrl;
     });
     
-    // Set the canvas to the exact dimensions of the original image
+    // Imposta le dimensioni del canvas temporaneo
     tempCanvas.width = img.naturalWidth;
     tempCanvas.height = img.naturalHeight;
     
-    // Copy and scale the content from our drawing canvas
+    // Copia e scala il contenuto dal canvas di disegno
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
     
+    // Inverte i colori
+    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = 255 - data[i];         // R
+        data[i + 1] = 255 - data[i + 1]; // G
+        data[i + 2] = 255 - data[i + 2]; // B
+        // Alpha rimane invariato
+    }
+    tempCtx.putImageData(imageData, 0, 0);
+    
+    // Converte il canvas in un file
     const maskBlob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
     const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
     return maskFile;
@@ -411,7 +423,6 @@ export default function Home() {
                   alt="Immagine da modificare"
                   className="w-full rounded-lg"
                   onLoad={(e) => {
-                    // Otteniamo le dimensioni reali dell'immagine
                     const img = e.target;
                     const tempImg = new Image();
                     tempImg.onload = () => {
