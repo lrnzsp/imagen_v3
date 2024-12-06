@@ -5,16 +5,23 @@ import { useState } from 'react';
 const FIXED_PREFIX = "a fashion photograph of";
 
 export default function Home() {
+  // Stati base
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
+  
+  // Stati per upload immagine
   const [imageFile, setImageFile] = useState(null);
   const [imageWeight, setImageWeight] = useState(50);
   const [previewUrl, setPreviewUrl] = useState(null);
+  
+  // Stati per aspect ratio e palette colori
   const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
   const [colorPalette, setColorPalette] = useState('');
   const [isOpenPalette, setIsOpenPalette] = useState(false);
+  
+  // Stati per modalità edit
   const [editPrompt, setEditPrompt] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [maskFile, setMaskFile] = useState(null);
@@ -23,6 +30,7 @@ export default function Home() {
   const [nextImageUrl, setNextImageUrl] = useState(null);
   const [editImageFile, setEditImageFile] = useState(null);
 
+  // Opzioni per aspect ratio
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Square',
     'ASPECT_10_16': '10:16 Portrait',
@@ -37,6 +45,7 @@ export default function Home() {
     'ASPECT_3_1': '3:1 Horizontal Banner'
   };
 
+  // Palette colori disponibili
   const colorPalettes = {
     '': { 
       name: 'No palette', 
@@ -76,6 +85,7 @@ export default function Home() {
     }
   };
 
+  // Funzione per ridimensionare l'immagine se necessario
   async function resizeImageIfNeeded(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -139,6 +149,7 @@ export default function Home() {
     });
   }
 
+  // Gestione cambio file
   async function handleFileChange(e) {
     const file = e.target.files[0];
     if (file) {
@@ -154,6 +165,7 @@ export default function Home() {
     }
   }
 
+  // Pulizia immagine
   function clearImage() {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -163,6 +175,7 @@ export default function Home() {
     setIsEditMode(false);
   }
 
+  // Gestione submit
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
@@ -217,6 +230,7 @@ export default function Home() {
     }
   }
 
+  // Converti il canvas in maschera
   async function handleCanvasToMask() {
     const canvas = document.getElementById('maskCanvas');
     const tempCanvas = document.createElement('canvas');
@@ -243,6 +257,7 @@ export default function Home() {
     return maskFile;
   }
 
+  // Gestione riempimento generativo
   async function handleGenerativeFill() {
     if (!imageUrl || !editPrompt) {
       setError('Image and prompt are required');
@@ -253,15 +268,30 @@ export default function Home() {
     setError(null);
 
     try {
+      // Se non abbiamo editImageFile (quando modifichiamo un'immagine generata),
+      // dobbiamo recuperare e creare un oggetto File dall'imageUrl
+      let imageFileToEdit = editImageFile;
+      if (!imageFileToEdit) {
+        try {
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          imageFileToEdit = new File([blob], 'generated-image.jpg', { type: 'image/jpeg' });
+        } catch (err) {
+          throw new Error('Failed to process the generated image for editing');
+        }
+      }
+
       const maskFile = await handleCanvasToMask();
       console.log("Sending mask file:", maskFile);
       console.log("Mask file type:", maskFile.type);
       console.log("Mask file size:", maskFile.size);
 
       const formData = new FormData();
-      formData.append('image_file', editImageFile);
+      formData.append('image_file', imageFileToEdit);
       formData.append('mask', maskFile);
       formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
+      formData.append('model', 'V_2'); // Aggiunto parametro model richiesto
+      formData.append('style_type', 'REALISTIC'); // Aggiunto style_type per consistenza
 
       const res = await fetch('/api/edit', {
         method: 'POST',
@@ -281,6 +311,7 @@ export default function Home() {
       setImageUrl(data.data[0].url);
       setIsEditMode(false);
       setEditPrompt('');
+
     } catch (err) {
       console.error('Error details:', err);
       setError(err.message);
@@ -289,8 +320,7 @@ export default function Home() {
     }
   }
 
-  const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
-
+  // Gestione upload immagine per editing
   async function handleEditImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
@@ -306,6 +336,8 @@ export default function Home() {
       }
     }
   }
+
+  const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
   return (
     <main className="min-h-screen bg-black text-white p-8">
