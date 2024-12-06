@@ -45,11 +45,28 @@ export async function POST(req) {
       body: form
     });
 
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', errorText);
+      return NextResponse.json({ error: `API Error: ${response.status} - ${errorText}` }, { status: response.status });
+    }
+
     const data = await response.json();
-    console.log('Ideogram response:', data);
+    console.log('Ideogram response data:', JSON.stringify(data, null, 2));
+    
+    if (!data || !data.image_url) {
+      console.error('Invalid API response format:', data);
+      return NextResponse.json({ error: 'Invalid API response format' }, { status: 500 });
+    }
+
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Error details:', error);
+    return NextResponse.json({ 
+      error: error.message,
+      stack: error.stack
+    }, { status: 500 });
   }
 }
