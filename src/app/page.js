@@ -659,7 +659,7 @@ export default function Home() {
 {!isEditMode && imageUrl && (
   <div className="mt-8 bg-black border border-white/20 rounded-2xl p-6">
     <div className="flex justify-end mb-4 gap-2">
-      <a                  {/* Questo tag <a> mancava */}
+      
         href={imageUrl}
         download="generated-image.jpg"
         className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-all duration-300"
