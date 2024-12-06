@@ -21,6 +21,7 @@ export default function Home() {
   const [maskPreviewUrl, setMaskPreviewUrl] = useState(null);
   const [previousImageUrl, setPreviousImageUrl] = useState(null);
   const [nextImageUrl, setNextImageUrl] = useState(null);
+  const [editImageFile, setEditImageFile] = useState(null);
 
   const aspectRatioOptions = {
     'ASPECT_1_1': '1:1 Square',
@@ -194,7 +195,7 @@ export default function Home() {
       console.log("Mask file size:", maskFile.size);
 
       const formData = new FormData();
-      formData.append('imageUrl', imageUrl);
+      formData.append('image_file', editImageFile);
       formData.append('mask', maskFile);
       formData.append('prompt', `${FIXED_PREFIX} ${editPrompt}`);
 
@@ -226,34 +227,13 @@ export default function Home() {
 
   const selectedPalette = colorPalettes[colorPalette] || colorPalettes[''];
 
-  async function handleEditImageUpload(e) {
+  function handleEditImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Prima carichiamo l'immagine
-        const uploadFormData = new FormData();
-        uploadFormData.append('image_file', file);
-
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: uploadFormData
-        });
-
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) throw new Error(uploadData.error || 'Error uploading image');
-
-        // Usa l'URL restituito da Ideogram
-        setImageUrl(uploadData.url);
-        setIsEditMode(true);
-      } catch (err) {
-        console.error('Error uploading:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+      const objectUrl = URL.createObjectURL(file);
+      setImageUrl(objectUrl);
+      setEditImageFile(file);
+      setIsEditMode(true);
     }
   }
 
